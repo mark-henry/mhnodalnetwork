@@ -1,0 +1,7 @@
+{
+  "name": "Nodal Network",
+  "description": "Nodal Network",
+  "repository": "https://github.com/heroku/mhnodalnetwork",
+  "logo": "http://node-js-sample.herokuapp.com/node.svg",
+  "keywords": ["nodal", "network"]
+}

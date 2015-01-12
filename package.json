@@ -1,0 +1,23 @@
+{
+  "name": "mhnodalnetwork",
+  "version": "0.1.0",
+  "description": "Nodal Network",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js"	
+  },
+  "dependencies": {
+    "ember": "latest"
+  },
+  "engines": {
+    "node": "latest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heroku/mhnodalnetwork"
+  },
+  "keywords": [
+    "nodal"
+  ],
+  "license": "MIT"
+}
