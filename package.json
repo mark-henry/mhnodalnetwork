@@ -4,7 +4,7 @@
   "description": "Nodal Network",
   "main": "serve.js",
   "scripts": {
-    "start": "node serve.js"	
+    "start": "node serve.js"
   },
   "dependencies": {
     "ember": "latest",
