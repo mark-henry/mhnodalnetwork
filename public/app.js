@@ -3,6 +3,10 @@ App = Em.Application.create({
   LOG_TRANSITIONS: true
 });
 
+App.Router.reopen({
+  location: 'auto'
+});
+
 App.Router.map(function() {
   this.resource('graph', { path: '/graph/:graph_id' });
 });
