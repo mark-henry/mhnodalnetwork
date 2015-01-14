@@ -13,6 +13,8 @@ App.GraphRoute = Ember.Route.extend({
   }
 });
 
-App.GraphController = Ember.Controller.extend({
-  graphid: 123
+App.GraphController = Ember.ObjectController.extend({
+  graph_id: function() {
+    return this.get('model.graph_id');
+  }.property('model.graph_id')
 });
