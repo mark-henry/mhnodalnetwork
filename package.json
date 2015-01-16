@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "ember": "latest",
-    "express": "~4.9.x"
+    "express": "~4.9.x",
+    "neo4j": "latest"
   },
   "engines": {
     "node": "latest"
