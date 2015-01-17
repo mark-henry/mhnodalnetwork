@@ -7,20 +7,28 @@ App.Router.reopen({
   location: 'auto'
 });
 
+DS.RESTAdapter.reopen({
+  namespace: 'api'
+});
+
 App.Router.map(function() {
-  this.resource('graph', {path: '/graph/:graph_id'}, function() {
-    this.resource('node', {path: '/node/:node_id'});
+  this.resource('graph', {path: '/graph/:id'}, function() {
+    this.resource('node', {path: '/node/:id'});
   });
+});
+
+App.Graph = DS.Model.extend({
+  tile: DS.attr()
 });
 
 App.GraphRoute = Ember.Route.extend({
   model: function(params) {
-    return {graph_id: params.graph_id};
+    return this.store.find('graph', params.id);
   }
 });
 
 App.NodeRoute = Ember.Route.extend({
   model: function(params) {
-    return {node_id: params.node_id};
+    return {id: params.node_id};
   }
 });
