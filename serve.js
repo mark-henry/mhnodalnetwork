@@ -12,13 +12,22 @@ app.use(function (req, res, next) {
   next();
 });
 
+app.get('/api/graphs', function(req, res) {
+  db.query('MATCH (g:Graph) RETURN g', {}, function(err, result) {
+    if (err) throw err;
+    result.forEach(function(n) {
+      res.send(n['g'].toString());
+    });
+  });
+});
+
 app.get('/api/graphs/:id', function(req, res) {
-  console.log('Reqested graph ' + req.params.id + ' from db');
-  res.json({
-    "graph": {
-      "id": req.params.id,
-      "title": "asdf fdas"
-    }
+  var query = 'MATCH (g:Graph {graph_id:' + req.params.id + '}) RETURN g';
+  db.query(query, {}, function(err, result) {
+    if (err) throw err;
+    result.forEach(function(n) {
+      res.send(n['g'].toString());
+    });
   });
 });
 
