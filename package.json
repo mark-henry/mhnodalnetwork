@@ -9,7 +9,8 @@
   "dependencies": {
     "ember": "latest",
     "express": "~4.9.x",
-    "neo4j": "latest"
+    "neo4j": "latest",
+    "hashids": "1.0.0"
   },
   "engines": {
     "node": "latest"
