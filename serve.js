@@ -11,15 +11,16 @@ var cache = LRU({max: 500, maxAge: 1000 * 60 * 5});
 app.set('port', (process.env.PORT || 5000));
 
 app.use('/public', express.static(__dirname + '/public'));
+app.use('/favicon.ico', express.static(__dirname + '/public/favicon.ico'));
 
 app.use(function (req, res, next) {
-  console.log('GET ' + req.path);
+  console.log('GET ' + req.url);
   next();
 });
 
 app.get('/api/graphs', function(req, res) {
-  if (cache.has('graphlist')) {
-    res.json(cache.get('graphlist'));
+  if (cache.has('graphs')) {
+    res.json(cache.get('graphs'));
   }
   else {
     db.query('MATCH (g:Graph) RETURN g', {}, function(err, result) {
@@ -33,16 +34,18 @@ app.get('/api/graphs', function(req, res) {
         graphlist.push({slug:graphslug});
       });
 
-      cache.set('graphlist', graphlist);
-      res.json(graphlist);
+      var response = { graphs: graphlist };
+      cache.set('graphs', response);
+      res.json(response);
     });
   }
 });
 
 app.get('/api/nodes/:node_slug', function(req, res) {
   var node_slug = req.params.node_slug;
-  if (cache.has(node_slug)) {
-    res.json(cache.get(node_slug));
+  var cache_key = 'nodes/' + node_slug;
+  if (cache.has(cache_key)) {
+    res.json(cache.get(cache_key));
   }
   else {
     var node = db.getNodeById(hashids.decode(node_slug), function(err, result) {
@@ -65,8 +68,10 @@ app.get('/api/nodes/:node_slug', function(req, res) {
             adjacentslug = hashids.encode(row['adj'].id);
             node.adjacencies.push(adjacentslug);
           });
-          cache.set(node.slug, node);
-          res.json(node);
+
+          var response = { 'node': node };
+          cache.set(cache_key, response);
+          res.json(response);
         });
       }
     });
@@ -75,8 +80,9 @@ app.get('/api/nodes/:node_slug', function(req, res) {
 
 app.get('/api/graphs/:graph_slug', function(req, res) {
   var graph_slug = req.params.graph_slug;
-  if (cache.has(graph_slug)) {
-    res.json(cache.get(graph_slug));
+  var cache_key = 'graphs/' + graph_slug;
+  if (cache.has(cache_key)) {
+    res.json(cache.get(cache_key));
   }
   else {
     var query = ['MATCH (g:Graph)-[*]-(n1:Node)--(n2:Node)',
@@ -106,12 +112,14 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
           nodesforcache[n1slug].adjacencies.push(n2slug);
         });
 
-        cache.set(graph.slug, graph);
         Object.keys(nodesforcache).forEach(function(key) {
           var node = nodesforcache[key];
-          cache.set(node.slug, node);
-        })
-        res.json(graph);
+          var node_cache_key = 'nodes/' + node.slug;
+          cache.set(node_cache_key, {node: node});
+        });
+        var response = { graph: graph };
+        cache.set(cache_key, response);
+        res.json(response);
       }
     });
   }
