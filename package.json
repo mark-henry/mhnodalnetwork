@@ -7,10 +7,10 @@
     "start": "node serve.js"
   },
   "dependencies": {
-    "ember": "latest",
     "express": "~4.9.x",
     "neo4j": "latest",
-    "hashids": "1.0.0"
+    "hashids": "1.0.0",
+    "lru-cache": "latest"
   },
   "engines": {
     "node": "latest"

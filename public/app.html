@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <link rel="shortcut icon" href="/public/favicon.ico" />
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
     <title>Nodal Network</title>
     <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap.min.css" rel="stylesheet">
@@ -32,20 +33,64 @@
     </style>
   </head>
   <body>
-    <script type="text/x-handlebars" data-template-name="application">
-      <div>{{#link-to 'graph' 123}}Take me to graph 123{{/link-to}}</div>
-      {{outlet}}
-    </script>
-    <script type="text/x-handlebars" data-template-name="graph">
-      <div>Graph {{id}}</div>
-      {{outlet}}
-    </script>
-    <script type="text/x-handlebars" data-template-name="node">
-      <div>Node {{id}}</div>
-    </script>
+    <div id="controls">
+      <script type="text/x-handlebars" data-template-name="graph">
+        {{#view App.GraphView}}
+        <div id="sidebar" style="position: absolute; top: 0; left: 5px;">
+
+          <!-- Search input-->
+          <div class="control-group controls">
+              <input id="search" name="search" type="text" placeholder="Search..." class="input-xlarge search-query">
+          </div>
+
+          <!-- Name Text input-->
+          <div class="control-group">
+            <div class="controls">
+              <input id="nameinput" name="nameinput" type="text" placeholder="Name" class="input-xlarge">
+            </div>
+          </div>
+
+          <!-- Description Textarea -->
+          <div class="control-group controls">
+            <textarea id="descarea" name="descarea" placeholder="Description" rows="2"></textarea>
+          </div>
+
+          <!-- Delete Node Button -->
+          <div class="control-group controls">
+              <button id="delete" name="delete" class="btn btn-mini btn-danger">Delete Node</button>
+          </div>
+
+          <!-- Cancel/Save Buttons -->
+          <div class="control-group controls">
+              <button id="cancel" name="cancel" class="btn btn-default">Cancel</button>
+              <button id="save" name="save" class="btn btn-primary">Save</button>
+          </div>
+
+          <div>
+            <label class="control-label" for="links">Links</label>
+            {{#each link in App.selectednode.links}}
+              <span>
+                <div>{{link.name}}</div>
+                <div class="align=right;">x</div>
+              </span>
+            {{/each}}
+          </div>
+
+        </div>
+
+        <div style="position:absolute;bottom:5px;right:5px;">
+          Nodal Network v2.0 by Mark Henry |
+          Draw distance <input type="number" min="1" max="9" value="5" class="input-tiny;" style="width: 30px;"> |
+          1 bazillion nodes in this network
+        </div>
+        {{/view}}
+      </script>
+    </div>
+    <div id="chart"></div>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0/handlebars.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/ember.js/1.9.1/ember.min.js"></script>
+    <!--<script src="//cdnjs.cloudflare.com/ajax/libs/ember.js/1.9.1/ember.min.js"></script>-->
+    <script src="/public/ember.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/ember-data.js/1.0.0-beta.14.1/ember-data.min.js"></script>
     <script src="//d3js.org/d3.v3.min.js"></script>
     <script type="text/javascript" src="/public/app.js"></script>
