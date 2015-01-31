@@ -14,15 +14,14 @@
       circle {
         cursor: move;
       }
-      .node {
-        fill: #1f77b4;
+      .nodelabel {
+        fill: black;
         fill-opacity: 1;
-        stroke: #999;
-        stroke-opacity: .5;
       }
       .link {
-        stroke: #999;
-        stroke-opacity: 1;
+        stroke: black;
+        stroke-opacity: 0.3;
+        stroke-width: 0.5;
       }
     </style>
   </head>
@@ -31,73 +30,59 @@
       {{outlet}}
     </script>
     <script type="text/x-handlebars" data-template-name="graph">
-      <div id="controls">
-        <div id="sidebar" style="position: absolute; top: 0; left: 5px;">
+      <div id="sidebar" style="position: absolute; top: 0; left: 5px;">
 
-          <!-- Search input-->
-          <div class="control-group controls">
-              <input id="search" name="search" type="text" placeholder="Search..." class="input-xlarge search-query">
-          </div>
-
-          <!-- Name Text input-->
-          <div class="control-group">
-            <div class="controls">
-              <input id="nameinput" name="nameinput" type="text" placeholder="Name" class="input-xlarge">
-            </div>
-          </div>
-
-          <!-- Description Textarea -->
-          <div class="control-group controls">
-            <textarea id="descarea" name="descarea" placeholder="Description" rows="2"></textarea>
-          </div>
-
-          <!-- Delete Node Button -->
-          <div class="control-group controls">
-              <button id="delete" name="delete" class="btn btn-mini btn-danger">Delete Node</button>
-          </div>
-
-          <!-- Cancel/Save Buttons -->
-          <div class="control-group controls">
-              <button id="cancel" name="cancel" class="btn btn-default">Cancel</button>
-              <button id="save" name="save" class="btn btn-primary">Save</button>
-          </div>
-
-          <div>
-            <label class="control-label" for="links">Links</label>
-            <div id="linklist">
-              <ol>
-                <li>one link</li>
-                <li>two link</li>
-                <li>red link</li>
-                <li>blue link</li>
-              </ol>
-            </div>
-            <div id="nodelist">
-              <ol>
-                {{#each n in model.nodes}}
-                  <li>{{n.id}}:{{n.title}}</li>
-                {{/each}}
-              </ol>
-            </div>
-          </div>
-
+        <!-- Search input-->
+        <div class="control-group controls">
+            <input id="search" name="search" type="text" placeholder="Search..." class="input-xlarge search-query" />
         </div>
 
-        <div id="statusbar" style="position:absolute;bottom:5px;right:5px;">
-          Nodal Network v2.0 by Mark Henry |
-          Draw distance <input type="number" min="1" max="9" value="5" class="input-tiny;" style="width: 30px;"> |
-          1 bazillion nodes in this network
+        <!-- Name Text input-->
+        <div class="control-group">
+          <div class="controls">
+            <input id="nameinput" name="nameinput" type="text" placeholder="Name" class="input-xlarge" />
+          </div>
         </div>
+
+        <!-- Description Textarea -->
+        <div class="control-group controls">
+          <textarea id="descarea" name="descarea" placeholder="Description" rows="2"></textarea>
+        </div>
+
+        <!-- Delete Node Button -->
+        <div class="control-group controls">
+            <button id="delete" name="delete" class="btn btn-mini btn-danger">Delete Node</button>
+        </div>
+
+        <div>
+          <label class="control-label" for="links">Links</label>
+          <div id="linklist">
+            <ol>
+              <li>one link</li>
+              <li>two link</li>
+              <li>red link</li>
+              <li>blue link</li>
+            </ol>
+          </div>
+        </div>
+
+      </div>
+
+      {{network-view}}
+
+      <div id="statusbar" style="position:absolute;bottom:5px;right:5px;">
+        Nodal Network v2.0 by Mark Henry |
+        {{!model.nodes.length}} nodes
       </div>
     </script>
-    <div id="chart"></div>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0/handlebars.min.js"></script>
     <!--script src="//cdnjs.cloudflare.com/ajax/libs/ember.js/1.9.1/ember.min.js"></script-->
     <script src="/public/ember.js"></script>
     <!--script src="//cdnjs.cloudflare.com/ajax/libs/ember-data.js/1.0.0-beta.14.1/ember-data.min.js"></script-->
     <script src="/public/ember-data.js"></script>
-    <script src="//d3js.org/d3.v3.min.js"></script>
+    <!--script src="//d3js.org/d3.v3.min.js"></script-->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js"></script>
     <script type="text/javascript" src="/public/app.js"></script>
   </body>
 </html>

@@ -1,10 +1,5 @@
 App = Em.Application.create({
-  LOG_TRANSITIONS: true,
-  ready: function() {
-    $(window).resize(function () {
-      App.graph.resize($(window).height(), $(window).width())
-    });
-  }
+  LOG_TRANSITIONS: true
 });
 
 // Routing & Data
@@ -47,59 +42,125 @@ App.GraphRoute = Ember.Route.extend({
   }
 });
 
-App.GraphController = Ember.Controller.extend({
-  init: function() {
-    App.graph.svg = d3.select("#chart").append("svg:svg")
-      .attr("width", App.graph.width).attr("height", App.graph.height);
+App.GraphController = Ember.ObjectController.extend({
+});
 
-    this.force = d3.layout.force().distance(100).charge(-1000).size([this.rcx*2, this.height]);
+App.NetworkViewComponent = Ember.Component.extend({
+  tagName: 'svg',
+  attributeBindings: ['width', 'height'],
+  force: d3.layout.force().distance(100).charge(-1000),
+  links: function() {
+    var nodes = this.get('controller.nodes');
+    var result = [];
 
-    this.force.on("tick", this.onTick);
+    // TODO: bro, do you even optimize?
+    nodes.forEach(function(source, sourceIndex) {
+      var adjacencies = source.get('adjacencies');
+      adjacencies.forEach(function(adjacent) {
+        nodes.forEach(function(target, targetIndex) {
+          if (adjacent.get('id') == target.get('id')) {
+            if (!result.some(function (link) { return link.target == sourceIndex; })) {
+              result.push({
+                source: sourceIndex,
+                target: targetIndex
+              });
+            }
+          }
+        });
+      });
+    });
 
-    App.graph.draw();
+    return result;
+  }.property('nodes.@each.adjacencies'),
+  nodes: function() {
+    return this.get('controller.nodes').map(function(node){
+      return { title: node.get('title') };
+    });
+  }.property('controller.nodes.@each.title'),
+  onTick: function () {
+    this.get('svg').selectAll('.node')
+      .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; });
+    this.get('svg').selectAll('.node > text')
+      .text(function(d) { return d.title || 'Untitled Node'; });
+    this.get('svg').selectAll('.link')
+      .attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
   },
-  onTick: function(data) {
-    var graph = App.graph;
+  onResize: function () {
+    var width  = $(window).width();
+    var height = $(window).height();
+    var center_x = width/2 + 110;
 
-    graph.svg.selectAll("circle")
-    .attr("cx", function(d) { return d.x; })
-    .attr("cy", function(d) { return d.y; });
+    this.force.size([center_x * 2, height]);
+    this.set('width', $(window).width());
+    this.set('height', $(window).height());
+  }.on('init'),
+  update: function() {
+    console.log('view.update');
 
-    graph.svg.selectAll("line.link")
-    .attr("x1", function(d) { return d.source.x; })
-    .attr("y1", function(d) { return d.source.y; })
-    .attr("x2", function(d) { return d.target.x; })
-    .attr("y2", function(d) { return d.target.y; });
+    var linkskey = function(d) { return d };
+    var links = this.get('links');
+    this.force.links(links);
+    var linkset = this.get('svg').selectAll('.link').data(links);
+    linkset.enter()
+      .append('line')
+        .attr('class', 'link');
+    linkset.exit().remove();
+
+    var nodekey = function (d) { return d.title };
+    var nodes = this.get('nodes');
+    this.force.nodes(nodes);
+    var nodeset = this.get('svg').selectAll('.node').data(nodes, nodekey);
+    nodeset.enter()
+      .append('g')
+        .attr('class', 'node')
+        .call(this.force.drag)
+      .append('text')
+        .attr('dx', 12)
+        .attr('dy', '.35em')
+        .attr('text-anchor', 'middle')
+        .attr('class', 'nodelabel')
+    nodeset.exit().remove();
+
+    this.force.start();
+  }.observes('nodes', 'links'),
+  init: function() {
+    this.force.on('tick', Ember.run.bind(this, this.onTick));
+    $(window).on('resize', Ember.run.bind(this, this.onResize));
+  },
+  didInsertElement: function() {
+    this.set('svg', d3.select(this.$()[0]));
+    Ember.run.once(this, 'update');
   }
 });
 
-// Todo: refactor into oblivion
-App.graph = Ember.Object.create({
+App.graph = Ember.Object.extend({
   init: function() {
-    this.width =  $(window).width()
-    this.height = $(window).height()
-    this.rcx = this.width/2 + 110
-    this.rcy = this.height/2
-    this.radius = 240
-    this.colors = d3.scale.category10().range()
-    this.nodes = []
-    this.links = []
+    this.width =  $(window).width();
+    this.height = $(window).height();
+    this.center = { x: this.width/2 + 110, y: this.height/2 };
+    this.radius = 240;
+    this.colors = d3.scale.category10().range();
+    this.nodes = [];
+    this.links = [];
 
-    this.force = d3.layout.force().distance(100).charge(-1000).size([this.rcx*2, this.height]);
+    this.force = d3.layout.force().distance(100).charge(-1000).size([this.center.x*2, this.height]);
 
-    this.force.on("tick", function(e) {
-      var graph = App.graph
+    this.force.on('tick', (function(view) {
+      return function () {
+        view.svg.selectAll('circle')
+          .attr('cx', function(d) { return d.x; })
+          .attr('cy', function(d) { return d.y; });
 
-      graph.svg.selectAll("circle")
-      .attr("cx", function(d) { return d.x; })
-      .attr("cy", function(d) { return d.y; });
-
-      graph.svg.selectAll("line.link")
-      .attr("x1", function(d) { return d.source.x; })
-      .attr("y1", function(d) { return d.source.y; })
-      .attr("x2", function(d) { return d.target.x; })
-      .attr("y2", function(d) { return d.target.y; });
-    });
+        view.svg.selectAll('line.link')
+          .attr('x1', function(d) { return d.source.x; })
+          .attr('y1', function(d) { return d.source.y; })
+          .attr('x2', function(d) { return d.target.x; })
+          .attr('y2', function(d) { return d.target.y; });
+      }
+    })(this));
   },
   resize: function(height, width){
     this.svg.attr('height', height).attr('width', width)
@@ -110,8 +171,6 @@ App.graph = Ember.Object.create({
     this.force.size([this.rcx*2, height]);
   },
   draw: function(){
-    var graph = App.graph
-
     numVertices = 10
 
     // magic vertex
@@ -137,27 +196,27 @@ App.graph = Ember.Object.create({
     this.drawCircles();
   },
   drawCircles: function() {
-    var circles = this.svg.selectAll("circle")
-    .data(this.nodes)
+    var circles = this.svg.selectAll('circle')
+      .data(this.nodes)
     circles.enter()
-    .append("svg:circle")
-    circles.attr("r", function(d, i) { return 5 })
-    .attr("class", function(d, i) { return 'node' })
-    .attr("cx", function(d) { return d.x; })
-    .attr("cy", function(d) { return d.y; })
-    .call(this.force.drag);
+      .append('svg:circle')
+    circles.attr('r', function(d, i) { return 5 })
+      .attr('class', function(d, i) { return 'node' })
+      .attr('cx', function(d) { return d.x; })
+      .attr('cy', function(d) { return d.y; })
+      .call(this.force.drag);
     circles.exit().remove();
   },
   drawLines: function(){
-    var lines = this.svg.selectAll("line.link")
+    var lines = this.svg.selectAll('line.link')
     .data(this.links)
     lines.enter()
-    .append("svg:line")
-    lines.attr("class", "link")
-    .attr("x1", function(d) { return d.source.x; })
-    .attr("y1", function(d) { return d.source.y; })
-    .attr("x2", function(d) { return d.target.x; })
-    .attr("y2", function(d) { return d.target.y; })
+    .append('svg:line')
+    lines.attr('class', 'link')
+    .attr('x1', function(d) { return d.source.x; })
+    .attr('y1', function(d) { return d.source.y; })
+    .attr('x2', function(d) { return d.target.x; })
+    .attr('y2', function(d) { return d.target.y; })
     lines.exit().remove()
   }
 });
