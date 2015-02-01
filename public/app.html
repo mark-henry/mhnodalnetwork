@@ -20,8 +20,8 @@
       }
       .link {
         stroke: black;
-        stroke-opacity: 0.3;
-        stroke-width: 0.5;
+        stroke-opacity: 0.2;
+        stroke-width: 1.0;
       }
     </style>
   </head>
@@ -40,13 +40,13 @@
         <!-- Name Text input-->
         <div class="control-group">
           <div class="controls">
-            <input id="nameinput" name="nameinput" type="text" placeholder="Name" class="input-xlarge" />
+            {{input value=node.title placeholder="Name"}}
           </div>
         </div>
 
         <!-- Description Textarea -->
         <div class="control-group controls">
-          <textarea id="descarea" name="descarea" placeholder="Description" rows="2"></textarea>
+          {{textarea value=node.desc placeholder="Description"}}
         </div>
 
         <!-- Delete Node Button -->
@@ -58,10 +58,6 @@
           <label class="control-label" for="links">Links</label>
           <div id="linklist">
             <ol>
-              <li>one link</li>
-              <li>two link</li>
-              <li>red link</li>
-              <li>blue link</li>
             </ol>
           </div>
         </div>

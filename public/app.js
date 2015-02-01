@@ -42,8 +42,11 @@ App.GraphRoute = Ember.Route.extend({
   }
 });
 
-App.GraphController = Ember.ObjectController.extend({
-});
+App.NodeRoute = Ember.Route.extend({
+  setupController: function(controller, node) {
+    controller.set('model', node);
+  }
+})
 
 App.NetworkViewComponent = Ember.Component.extend({
   tagName: 'svg',
@@ -53,7 +56,7 @@ App.NetworkViewComponent = Ember.Component.extend({
     var nodes = this.get('controller.nodes');
     var result = [];
 
-    // TODO: bro, do you even optimize?
+    // TODO: Optimize this
     nodes.forEach(function(source, sourceIndex) {
       var adjacencies = source.get('adjacencies');
       adjacencies.forEach(function(adjacent) {
@@ -77,10 +80,40 @@ App.NetworkViewComponent = Ember.Component.extend({
       return { title: node.get('title') };
     });
   }.property('controller.nodes.@each.title'),
+  update: function() {
+    console.log('view.update');
+
+    var linkskey = function(d) { return d };
+    var links = this.get('links');
+    this.force.links(links);
+    var linkset = this.get('svg').select('.linkgroup').selectAll('.link').data(links);
+    linkset.enter()
+      .insert('line')
+        .attr('class', 'link');
+    linkset.exit().remove();
+
+    var nodekey = function(d) { return d.title };
+    var nodes = this.get('nodes');
+    this.force.nodes(nodes);
+    var nodeset = this.get('svg').select('.nodegroup').selectAll('.node').data(nodes, nodekey);
+    nodeset.enter()
+      .append('text')
+        .attr('dx', 12)
+        .attr('dy', '.35em')
+        .attr('text-anchor', 'middle')
+        .attr('class', 'node')
+        .on('click', this.onNodeClick)
+        .call(this.force.drag);
+    nodeset.exit().remove();
+
+    this.force.start();
+  }.observes('nodes', 'links'),
+  onNodeClick: function(d) {
+    this.get('controller').send('selectNode', d.id);
+  },
   onTick: function () {
     this.get('svg').selectAll('.node')
-      .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; });
-    this.get('svg').selectAll('.node > text')
+      .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; })
       .text(function(d) { return d.title || 'Untitled Node'; });
     this.get('svg').selectAll('.link')
       .attr('x1', function(d) { return d.source.x; })
@@ -97,41 +130,14 @@ App.NetworkViewComponent = Ember.Component.extend({
     this.set('width', $(window).width());
     this.set('height', $(window).height());
   }.on('init'),
-  update: function() {
-    console.log('view.update');
-
-    var linkskey = function(d) { return d };
-    var links = this.get('links');
-    this.force.links(links);
-    var linkset = this.get('svg').selectAll('.link').data(links);
-    linkset.enter()
-      .append('line')
-        .attr('class', 'link');
-    linkset.exit().remove();
-
-    var nodekey = function (d) { return d.title };
-    var nodes = this.get('nodes');
-    this.force.nodes(nodes);
-    var nodeset = this.get('svg').selectAll('.node').data(nodes, nodekey);
-    nodeset.enter()
-      .append('g')
-        .attr('class', 'node')
-        .call(this.force.drag)
-      .append('text')
-        .attr('dx', 12)
-        .attr('dy', '.35em')
-        .attr('text-anchor', 'middle')
-        .attr('class', 'nodelabel')
-    nodeset.exit().remove();
-
-    this.force.start();
-  }.observes('nodes', 'links'),
   init: function() {
     this.force.on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
   didInsertElement: function() {
     this.set('svg', d3.select(this.$()[0]));
+    this.get('svg').append('g').attr('class', 'linkgroup');
+    this.get('svg').append('g').attr('class', 'nodegroup');
     Ember.run.once(this, 'update');
   }
 });
