@@ -5,22 +5,24 @@
     <title>Nodal Network</title>
     <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap.min.css" rel="stylesheet">
     <style type="text/css">
-      body {
-        text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
-      }
-      .range-text {
-        width: 25px;
-      }
       circle {
         cursor: move;
       }
-      .nodelabel {
+      .node {
         fill: black;
         fill-opacity: 1;
+        text-shadow:
+          1px 1px 0 white, -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white,
+          2px 2px 0 white, -2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white;
+        text-anchor: middle;
+      }
+      .selectednode {
+        text-shadow:
+          2px 2px 5px blue, -2px -2px 5px blue, 2px -2px 5px blue, -2px 2px 5px blue;
       }
       .link {
         stroke: black;
-        stroke-opacity: 0.2;
+        stroke-opacity: 0.6;
         stroke-width: 1.0;
       }
     </style>
@@ -28,6 +30,35 @@
   <body>
     <script type="text/x-handlebars">
       {{outlet}}
+    </script>
+    <script type="text/x-handlebars" data-template-name="node">
+      <!-- Name Text input-->
+      <div class="control-group">
+        <div class="controls">
+          {{input value=model.title placeholder="Name"}}
+        </div>
+      </div>
+
+      <!-- Description Textarea -->
+      <div class="control-group controls">
+        {{textarea value=model.desc placeholder="Description"}}
+      </div>
+
+      <!-- Delete Node Button -->
+      <div class="control-group controls">
+          <button id="delete" name="delete" class="btn btn-mini btn-danger">Delete Node</button>
+      </div>
+
+      <div class="control-group controls">
+        <label class="control-label" for="linklist">Links</label>
+        <div id="linklist">
+          <ul>
+            {{#each adjnode in adjacencies}}
+              <li>{{adjnode.title}}</li>
+            {{/each}}
+          </ul>
+        </div>
+      </div>
     </script>
     <script type="text/x-handlebars" data-template-name="graph">
       <div id="sidebar" style="position: absolute; top: 0; left: 5px;">
@@ -37,30 +68,7 @@
             <input id="search" name="search" type="text" placeholder="Search..." class="input-xlarge search-query" />
         </div>
 
-        <!-- Name Text input-->
-        <div class="control-group">
-          <div class="controls">
-            {{input value=node.title placeholder="Name"}}
-          </div>
-        </div>
-
-        <!-- Description Textarea -->
-        <div class="control-group controls">
-          {{textarea value=node.desc placeholder="Description"}}
-        </div>
-
-        <!-- Delete Node Button -->
-        <div class="control-group controls">
-            <button id="delete" name="delete" class="btn btn-mini btn-danger">Delete Node</button>
-        </div>
-
-        <div>
-          <label class="control-label" for="links">Links</label>
-          <div id="linklist">
-            <ol>
-            </ol>
-          </div>
-        </div>
+        {{outlet}}
 
       </div>
 
@@ -68,7 +76,7 @@
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:5px;">
         Nodal Network v2.0 by Mark Henry |
-        {{!model.nodes.length}} nodes
+        {{model.nodes.length}} nodes
       </div>
     </script>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
