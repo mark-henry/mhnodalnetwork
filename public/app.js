@@ -57,13 +57,21 @@ App.NodeController = Ember.ObjectController.extend({
       this.transitionToRoute('node', nodeid);
     }
   },
-  nodes: Ember.computed.alias("controllers.graph.nodes")
+  nodes: Ember.computed.alias('controllers.graph.nodes')
 });
 
 App.NetworkViewComponent = Ember.Component.extend({
   tagName: 'svg',
   attributeBindings: ['width', 'height'],
   force: d3.layout.force().distance(100).charge(-1000),
+  selected_id: Ember.computed.alias('controller.id'),
+  nodes: [],
+  didInsertElement: function() {
+    this.set('svg', d3.select(this.$()[0]));
+    this.get('svg').append('g').attr('class', 'linkgroup');
+    this.get('svg').append('g').attr('class', 'nodegroup');
+    Ember.run.once(this, 'update');
+  },
   update: function() {
     var force = this.get('force');
     var nodes = this.get('nodes');
@@ -95,34 +103,18 @@ App.NetworkViewComponent = Ember.Component.extend({
 
     force.start();
   }.observes('nodes', 'links'),
-  onClick: function (_this) {
-    return (function (d) {
-      d.px = _this.get('center_x');
-      d.py = _this.get('center_y');
-      d.fixed = true;
-      _this.get('force').start();
-      _this.get('controller').send('selectNode', d.id);
-    })
-  },
-  onTick: function () {
-    this.get('svg').selectAll('.node')
-      .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; })
-      .attr('class', function(d) { return d.selected ? 'node selected' : 'node'; });
-    this.get('svg').selectAll('.link')
-      .attr('x1', function(d) { return d.source.x; })
-      .attr('y1', function(d) { return d.source.y; })
-      .attr('x2', function(d) { return d.target.x; })
-      .attr('y2', function(d) { return d.target.y; });
-  },
   links: function() {
     var nodes = this.get('controller.nodes');
+    var drawNodes = this.get('nodes');
     var result = [];
 
+    // Incorrect if arrays have different orders! Must look up by id
+    // Also, can be optimized
     nodes.forEach(function(source, sourceIndex) {
       var adjacencies = source.get('adjacencies');
       adjacencies.forEach(function(adjacent) {
-        nodes.forEach(function(target, targetIndex) {
-          if (adjacent.get('id') == target.get('id')) {
+        drawNodes.forEach(function(target, targetIndex) {
+          if (adjacent.get('id') == target.id) {
             if (!result.some(function (link) { return link.target == sourceIndex; })) {
               result.push({
                 source: sourceIndex,
@@ -136,25 +128,53 @@ App.NetworkViewComponent = Ember.Component.extend({
 
     return result;
   }.property('controller.nodes.@each.adjacencies', 'nodes'),
-  nodes: function() {
+  streamingUpdateNodes: function() {
+    var incomingNodes = this.get('controller.nodes');
+    var updatedNodes = this.get('nodes');
     var _this = this;
-    return this.get('controller.nodes').map(
-      function (node) {
-        var selected = (node.get('id') == _this.get('controller.id'));
-        var result = {
-          id: node.get('id'),
-          title: node.get('title') || 'Unnamed Node',
-          selected: selected,
-          fixed: selected
-        }
-        if (selected) {
-          result.px = _this.get('center_x');
-          result.py = _this.get('center_y');
-        }
-        return result;
+
+    this.propertyWillChange('nodes');
+    incomingNodes.forEach(function(incomingNode) {
+      var selected = incomingNode.get('id') == _this.get('controller.id');
+      var matchesid = (function(node) { return node.id == incomingNode.id; })
+      var existingNode = updatedNodes.find(matchesid);
+      if (existingNode) {
+        existingNode.title = incomingNode.get('title');
+        existingNode.selected = selected;
+        existingNode.fixed = selected;
       }
-    );
-  }.property('controller.nodes', 'controller.nodes.[]', 'controller.nodes.@each.id', 'controller.nodes.@each.title', 'controller.id', 'center_x', 'center_y'),
+      else {
+        var newNode = {
+          id: incomingNode.get('id'),
+          title: incomingNode.get('title') || 'Unnamed Node',
+          selected: selected,
+          fixed: selected,
+        };
+        newNode.x = newNode.px = _this.get('center_x');
+        newNode.y = newNode.py = _this.get('center_y');
+        updatedNodes.push(newNode);
+      }
+    });
+
+    this.set('nodes', updatedNodes);
+    this.propertyDidChange('nodes');
+  }.observes('controller.nodes.@each.title', 'controller.id'),
+  onClick: function (_this) {
+    return (function (d) {
+      if (d3.event.defaultPrevented) return; // ignore drag
+      _this.get('controller').send('selectNode', d.id);
+    })
+  },
+  onTick: function () {
+    this.get('svg').selectAll('.node')
+      .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; })
+      .attr('class', function(d) { return d.selected ? 'node selected' : 'node'; });
+    this.get('svg').selectAll('.link')
+      .attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+  },
   onResize: function () {
     var width  = $(window).width();
     var height = $(window).height();
@@ -170,11 +190,5 @@ App.NetworkViewComponent = Ember.Component.extend({
   init: function() {
     this.force.on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
-  },
-  didInsertElement: function() {
-    this.set('svg', d3.select(this.$()[0]));
-    this.get('svg').append('g').attr('class', 'linkgroup');
-    this.get('svg').append('g').attr('class', 'nodegroup');
-    Ember.run.once(this, 'update');
   }
 });
