@@ -1,15 +1,7 @@
+(function() {
+
 App = Em.Application.create({
-  LOG_TRANSITIONS: true
-});
-
-App.Router.map(function() {
-  this.resource('graph', {path: '/graph/:graph_slug'}, function() {
-    this.resource('node', {path: '/node/:node_slug'});
-  });
-});
-
-App.Router.reopen({
-  location: 'auto'
+  // LOG_TRANSITIONS: true
 });
 
 DS.RESTAdapter.reopen({
@@ -35,17 +27,27 @@ App.Graph = DS.Model.extend({
   nodes: DS.hasMany('node', {async: true})
 });
 
-App.GraphRoute = Ember.Route.extend({
-  model: function(params) {
-    return this.store.find('graph', params.graph_slug);
-  }
+App.Router.map(function() {
+  this.resource('graph', {path: '/graph/:graph_slug'}, function() {
+    this.resource('node', {path: '/node/:node_slug'});
+  });
 });
 
-App.NodeRoute = Ember.Route.extend({
-  model: function(params) {
-    return this.store.find('node', params.node_slug);
-  }
-})
+App.Router.reopen({
+  location: 'auto'
+});
+
+// App.GraphRoute = Ember.Route.extend({
+//   model: function(params) {
+//     return this.store.find('graph', params.graph_slug);
+//   }
+// });
+
+// App.NodeRoute = Ember.Route.extend({
+//   model: function(params) {
+//     return this.store.find('node', params.node_slug);
+//   }
+// });
 
 App.GraphController = Ember.ObjectController.extend({
 });
@@ -54,27 +56,153 @@ App.NodeController = Ember.ObjectController.extend({
   needs: 'graph',
   actions: {
     selectNode: function(nodeid) {
+      console.log('selected', nodeid);
       this.transitionToRoute('node', nodeid);
+    },
+    newNode: function(nodeName) {
+      console.log('create node', nodeName);
+      this.store.createRecord('node', {
+        title: nodeName
+      });
+    },
+    deleteNode: function() {
+      console.log('delete current node', this.get('id'), this.get('title'));
+    },
+    addLink: function(node) {
+      console.log('add link from', this.get('id'), 'to', node.get('id'), node.get('title'));
+    },
+    deleteLink: function(link) {
+      console.log('delete link from', this.get('id'), 'to', link.get('id'));
+      this.get('adjacencies').removeObject(link);
     }
   },
   nodes: Ember.computed.alias('controllers.graph.nodes')
 });
 
+// twitter-typeahead by thefrontside (customized)
+// https://github.com/thefrontside/ember-cli-twitter-typeahead/
+App.NodeSearchComponent = Ember.TextField.extend({
+  classNames: [ 'form-control' ],
+
+  keyUp: function(event) {
+    if (event.which === 13) {
+      var $dropdownMenu = this.$().siblings('.tt-dropdown-menu');
+      var $suggestions = $dropdownMenu.find('.tt-suggestion:not(.enter-suggest)');
+      if ($suggestions.length) {
+        $suggestions.first().click();
+      } else {
+        this.sendAction('select-without-match-action', this.$().val());
+      }
+    }
+  },
+
+  setSelectionValue: function() {
+    var selection = this.get('selection');
+    if (selection) {
+      this.$().typeahead('val', selection.get('title'));
+    }
+    console.log('setSelectionValue', this.get('selection.id'));
+    this.sendAction('select-action', this.get('selection.id'));
+  },
+
+  _filterContent: function(query) {
+    var regex = new RegExp(query, 'i');
+    return this.get('content').filter(function(node) {
+      return regex.test(node.get('title'));
+    }).map(function(thing) {
+      return thing;
+    });
+  },
+
+  _initializeTypeahead: function() {
+    var typeaheadParams = {
+        minLength: 0,
+        displayKey: function(node) {
+          return node.get('title');
+        }.bind(this),
+        source: function(query, cb) {
+          var content = this.get('content');
+          if (!query || query === '*') {
+            return cb(content);
+          }
+          cb(this._filterContent(query));
+        }.bind(this),
+        templates: {
+          footer: function(object) {
+            if (object.isEmpty) {
+              return '';
+            } else {
+              return '';
+            }
+          }.bind(this),
+          empty: function(object) {
+              return '';
+          }.bind(this)
+        }
+      };
+    this.$().typeahead({ }, typeaheadParams)
+      .on('typeahead:selected typeahead:autocompleted',
+        Ember.run.bind(this, function(e, obj, dataSet) {
+          this.set('selection', obj);
+        })
+      );
+  },
+
+  focusIn: function() {
+    this.$().select();
+  },
+
+  focusOut: function() {
+    var query = this.$().typeahead('val');
+    var results = this._filterContent(query);
+    if (Ember.$.trim(query).length) {
+      if (results.length) {
+        this.set('selection', results[0]);
+      }
+    }
+  },
+
+  didInsertElement: function() {
+    this.set('$', this.$);
+    Ember.run.scheduleOnce('afterRender', this, '_initializeTypeahead');
+  }.on('didInsertElement'),
+
+  setTypeaheadValue: Ember.observer('selection', function() {
+    Ember.run.once(this, 'setSelectionValue');
+  }),
+
+  close: function() {
+    this.$().typeahead('close');
+  },
+
+  destroyTypeahead: Ember.observer(function() {
+    this.$().typeahead('destroy');
+  }).on('willDestroyElement')
+});
+
 App.NetworkViewComponent = Ember.Component.extend({
   tagName: 'svg',
   attributeBindings: ['width', 'height'],
-  force: d3.layout.force().distance(100).charge(-1000),
-  selected_id: Ember.computed.alias('controller.id'),
   nodes: [],
+  visibleNodes: [],
+  drawDistance: 3,
+
+  init: function() {
+    this.set('force', d3.layout.force().distance(100).charge(-1000));
+    this.get('force').on('tick', Ember.run.bind(this, this.onTick));
+    $(window).on('resize', Ember.run.bind(this, this.onResize));
+  },
+
   didInsertElement: function() {
     this.set('svg', d3.select(this.$()[0]));
     this.get('svg').append('g').attr('class', 'linkgroup');
     this.get('svg').append('g').attr('class', 'nodegroup');
     Ember.run.once(this, 'update');
   },
+
   update: function() {
     var force = this.get('force');
-    var nodes = this.get('nodes');
+    var nodes = this.get('visibleNodes');
     var links = this.get('links');
     
     force.nodes(nodes);
@@ -102,18 +230,19 @@ App.NetworkViewComponent = Ember.Component.extend({
     linkSelection.exit().remove();
 
     force.start();
-  }.observes('nodes', 'links'),
+  }.observes('visibleNodes', 'links'),
+
   links: function() {
-    var nodes = this.get('controller.nodes');
-    var drawNodes = this.get('nodes');
+    var graphNodes = this.get('nodes');
+    var visibleNodes = this.get('visibleNodes');
     var result = [];
 
     // Incorrect if arrays have different orders! Must look up by id
     // Also, can be optimized
-    nodes.forEach(function(source, sourceIndex) {
+    graphNodes.forEach(function(source, sourceIndex) {
       var adjacencies = source.get('adjacencies');
       adjacencies.forEach(function(adjacent) {
-        drawNodes.forEach(function(target, targetIndex) {
+        visibleNodes.forEach(function(target, targetIndex) {
           if (adjacent.get('id') == target.id) {
             if (!result.some(function (link) { return link.target == sourceIndex; })) {
               result.push({
@@ -127,15 +256,17 @@ App.NetworkViewComponent = Ember.Component.extend({
     });
 
     return result;
-  }.property('controller.nodes.@each.adjacencies', 'nodes'),
+  }.property('nodes.@each.adjacencies', 'visibleNodes'),
+
   streamingUpdateNodes: function() {
-    var incomingNodes = this.get('controller.nodes');
-    var updatedNodes = this.get('nodes');
+    var incomingNodes = this.get('nodes');
+    var updatedNodes = this.get('visibleNodes');
     var _this = this;
 
-    this.propertyWillChange('nodes');
+    // Incorrect: ignores deletes
+    this.propertyWillChange('visibleNodes');
     incomingNodes.forEach(function(incomingNode) {
-      var selected = incomingNode.get('id') == _this.get('controller.id');
+      var selected = incomingNode.get('id') == _this.get('selectedId');
       var matchesid = (function(node) { return node.id == incomingNode.id; })
       var existingNode = updatedNodes.find(matchesid);
       if (existingNode) {
@@ -150,21 +281,25 @@ App.NetworkViewComponent = Ember.Component.extend({
           selected: selected,
           fixed: selected,
         };
-        newNode.x = newNode.px = _this.get('center_x');
-        newNode.y = newNode.py = _this.get('center_y');
+        if (selected) {
+          newNode.x = newNode.px = _this.get('center_x');
+          newNode.y = newNode.py = _this.get('center_y');
+        }
         updatedNodes.push(newNode);
       }
     });
 
-    this.set('nodes', updatedNodes);
-    this.propertyDidChange('nodes');
-  }.observes('controller.nodes.@each.title', 'controller.id'),
+    this.set('visibleNodes', updatedNodes);
+    this.propertyDidChange('visibleNodes');
+  }.observes('nodes.@each.title', 'selectedId'),
+
   onClick: function (_this) {
     return (function (d) {
       if (d3.event.defaultPrevented) return; // ignore drag
-      _this.get('controller').send('selectNode', d.id);
+      _this.sendAction('select-action', d.id);
     })
   },
+
   onTick: function () {
     this.get('svg').selectAll('.node')
       .attr('transform', function(d) { return 'translate(' + [d.x, d.y] + ')'; })
@@ -175,9 +310,10 @@ App.NetworkViewComponent = Ember.Component.extend({
       .attr('x2', function(d) { return d.target.x; })
       .attr('y2', function(d) { return d.target.y; });
   },
+
   onResize: function () {
-    var width  = $(window).width();
-    var height = $(window).height();
+    var width  = $(window).width() - 5;
+    var height = $(window).height() - 5;
     var center_x = (width - 110)/2 + 110;
     var center_y = height/2;
 
@@ -186,9 +322,7 @@ App.NetworkViewComponent = Ember.Component.extend({
     this.set('center_y', center_y);
     this.set('width', width);
     this.set('height', height);
-  }.on('init'),
-  init: function() {
-    this.force.on('tick', Ember.run.bind(this, this.onTick));
-    $(window).on('resize', Ember.run.bind(this, this.onResize));
-  }
+  }.on('init')
 });
+
+})();

@@ -14,7 +14,7 @@ app.use('/public', express.static(__dirname + '/public'));
 app.use('/favicon.ico', express.static(__dirname + '/public/favicon.ico'));
 
 app.use(function (req, res, next) {
-  console.log('GET ' + req.url);
+  console.log(req.method, req.url);
   next();
 });
 
