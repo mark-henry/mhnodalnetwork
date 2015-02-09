@@ -49,6 +49,15 @@ App.NodeRoute = Ember.Route.extend({
   }
 });
 
+App.GraphController = Ember.ObjectController.extend({
+  save: function() {
+    this.get('model').save();
+  },
+  autoSave: function() {
+    Ember.run.debounce(this, this.save, 5000);
+  }.observes('nodes.[]')
+});
+
 App.NodeController = Ember.ObjectController.extend({
   needs: 'graph',
   actions: {
@@ -106,6 +115,13 @@ App.NodeController = Ember.ObjectController.extend({
         }
       );
   },
+  save: function() {
+    this.get('model').save();
+  },
+  autoSave: function() {
+    console.log('bouncin');
+    Ember.run.debounce(this, this.save, 2000);
+  }.observes('title', 'desc', 'adjacencies.@each'),
   nodes: Ember.computed.alias('controllers.graph.nodes')
 });
 
@@ -132,6 +148,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
       this.$().typeahead('val', selection.get('title'));
     }
     this.sendAction('select-action', this.get('selection'));
+    this.$().typeahead('val', '');
   },
 
   _filterContent: function(query) {
@@ -303,7 +320,6 @@ App.NetworkViewComponent = Ember.Component.extend({
         existingNode.selected = selected;
         existingNode.fixed = selected;
       } else {
-        console.log('new node recognized:', incomingNode.get('id'), incomingNode.get('title'));
         var newNode = {
           id: incomingNode.get('id'),
           title: incomingNode.get('title') || 'Unnamed Node',

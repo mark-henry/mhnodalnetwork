@@ -145,6 +145,11 @@ app.post('/api/nodes', function(req, res) {
   res.json(req.body);
 });
 
+app.put('/api/graphs/:graph_slug', function(req, res) {
+  console.log(req.body);
+  res.json({});
+});
+
 // If all else fails: send them app.html
 app.get('/*', function(req, res) {
   res.sendFile(__dirname + '/public/app.html');
