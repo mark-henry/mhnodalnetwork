@@ -35,8 +35,9 @@
     </style>
   </head>
   <body>
-    <script type="text/x-handlebars">
+    <script type="text/x-handlebars" data-template-name="graph">
       {{outlet}}
+      {{outlet "modal"}}
     </script>
     <script type="text/x-handlebars" data-template-name="node">
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
@@ -56,7 +57,7 @@
         </div>
 
         <div class="control-group controls">
-            <button id="delete" name="delete" {{action "deleteNode"}} class="btn btn-mini btn-danger">Delete Node</button>
+            <button id="delete" name="delete" {{action "deleteNode" model}} class="btn btn-mini btn-danger">Delete Node</button>
         </div>
 
         <div class="control-group controls">
@@ -66,7 +67,7 @@
               {{#each adjnode in adjacencies}}
                 <li>{{adjnode.title}} <button {{action 'deleteLink' adjnode}}>X</button></li>
               {{/each}}
-              <li>{{node-search content=nodes select-without-match-action="newNode"}}</li>
+              <li>{{node-search content=nodes select-action="addLink" select-without-match-action="newNodeAndAddLink"}}</li>
             </ul>
           </div>
         </div>
@@ -76,14 +77,10 @@
       {{network-view nodes=nodes selectedId=id drawDistance=drawDistance select-action="selectNode"}}
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:20px;">
-        Nodal Network v2.0 by Mark Henry |
         Draw distance {{input class="drawdistinput" type="number"
           min="1" value="3" max="9" value=drawDistance}} |
         {{nodes.length}} nodes
       </div>
-    </script>
-    <script type="text/x-handlebars" data-template-name="graph">
-      {{outlet}}
     </script>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/handlebars.js/2.0.0/handlebars.min.js"></script>

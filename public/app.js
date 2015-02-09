@@ -8,6 +8,10 @@ DS.RESTAdapter.reopen({
   namespace: 'api'
 });
 
+App.Router.reopen({
+  location: 'auto'
+});
+
 App.ApplicationSerializer = DS.RESTSerializer.extend({
   primaryKey: 'slug',
   normalizeHash: function(type, hash) {
@@ -33,47 +37,61 @@ App.Router.map(function() {
   });
 });
 
-App.Router.reopen({
-  location: 'auto'
+App.GraphRoute = Ember.Route.extend({
+  model: function(params) {
+    return this.store.find('graph', params.graph_slug);
+  }
 });
 
-// App.GraphRoute = Ember.Route.extend({
-//   model: function(params) {
-//     return this.store.find('graph', params.graph_slug);
-//   }
-// });
-
-// App.NodeRoute = Ember.Route.extend({
-//   model: function(params) {
-//     return this.store.find('node', params.node_slug);
-//   }
-// });
-
-App.GraphController = Ember.ObjectController.extend({
+App.NodeRoute = Ember.Route.extend({
+  model: function(params) {
+    return this.store.find('node', params.node_slug);
+  }
 });
 
 App.NodeController = Ember.ObjectController.extend({
   needs: 'graph',
   actions: {
-    selectNode: function(nodeid) {
-      console.log('selected', nodeid);
-      this.transitionToRoute('node', nodeid);
+    selectNode: function(node) {
+      this.transitionToRoute('node', node.id);
     },
     newNode: function(nodeName) {
+      var _this = this;
       console.log('create node', nodeName);
-      this.store.createRecord('node', {
+      var newNode = this.store.createRecord('node', {
         title: nodeName
-      });
+      }).save().then(
+        function(newNode) {
+          _this.get('nodes').addObject(newNode);
+          _this.transitionToRoute('node', newNode.id);
+        }
+      );
+      console.log(newNode);
+      return newNode;
     },
     deleteNode: function() {
       console.log('delete current node', this.get('id'), this.get('title'));
+      return this.render('deleteNodeModal', {
+        into: graph,
+        outlet: 'modal'
+      });
     },
-    addLink: function(node) {
-      console.log('add link from', this.get('id'), 'to', node.get('id'), node.get('title'));
+    closeModal: function() {
+      return this.disconnectOutlet({
+        outlet: 'modal',
+        parentView: 'graph'
+      });
+    },
+    addLink: function(nodeToLinkTo) {
+      console.log('add link from', this.get('id'), 'to', nodeToLinkTo.get('id'), nodeToLinkTo.get('title'));
+      this.get('adjacencies').addObject(nodeToLinkTo);
+      this.model.save();
     },
     deleteLink: function(link) {
-      console.log('delete link from', this.get('id'), 'to', link.get('id'));
       this.get('adjacencies').removeObject(link);
+      this.model.save();
+    },
+    newNodeAndAddLink: function() {
     }
   },
   nodes: Ember.computed.alias('controllers.graph.nodes')
@@ -101,8 +119,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
     if (selection) {
       this.$().typeahead('val', selection.get('title'));
     }
-    console.log('setSelectionValue', this.get('selection.id'));
-    this.sendAction('select-action', this.get('selection.id'));
+    this.sendAction('select-action', this.get('selection'));
   },
 
   _filterContent: function(query) {
@@ -129,11 +146,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
         }.bind(this),
         templates: {
           footer: function(object) {
-            if (object.isEmpty) {
-              return '';
-            } else {
-              return '';
-            }
+            return '';
           }.bind(this),
           empty: function(object) {
               return '';
@@ -188,7 +201,7 @@ App.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(100).charge(-1000));
+    this.set('force', d3.layout.force().distance(100).charge(-300).gravity(.018));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
@@ -296,7 +309,7 @@ App.NetworkViewComponent = Ember.Component.extend({
   onClick: function (_this) {
     return (function (d) {
       if (d3.event.defaultPrevented) return; // ignore drag
-      _this.sendAction('select-action', d.id);
+      _this.sendAction('select-action', d);
     })
   },
 

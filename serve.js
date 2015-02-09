@@ -1,17 +1,26 @@
 var express = require('express');
+var bodyParser = require('body-parser');
 var app = express();
+
 var neo4j = require('neo4j');
 var db = new neo4j.GraphDatabase(process.env['GRAPHSTORY_URL']);
 db.params = {userId: db.id};
+
 var Hashids = require('hashids');
 var hashids = new Hashids('Smaller cap, less plastic');
+
 var LRU = require('lru-cache');
 var cache = LRU({max: 500, maxAge: 1000 * 60 * 5});
 
 app.set('port', (process.env.PORT || 5000));
+app.listen(app.get('port'), function() {
+  console.log('Listening on port ' + app.get('port'));
+});
 
 app.use('/public', express.static(__dirname + '/public'));
 app.use('/favicon.ico', express.static(__dirname + '/public/favicon.ico'));
+
+app.use(bodyParser.json());
 
 app.use(function (req, res, next) {
   console.log(req.method, req.url);
@@ -125,10 +134,18 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
   }
 });
 
-app.get('/*', function(req, res) {
-  res.sendFile(__dirname + '/public/app.html');
+app.put('/api/nodes/:node_slug', function(req, res) {
+  console.log(req.body);
+  res.json({});
 });
 
-app.listen(app.get('port'), function() {
-  console.log('Listening on port ' + app.get('port'));
+app.post('/api/nodes', function(req, res) {
+  console.log(req.body);
+  req.body.node.slug = 'asdf';
+  res.json(req.body);
+});
+
+// If all else fails: send them app.html
+app.get('/*', function(req, res) {
+  res.sendFile(__dirname + '/public/app.html');
 });
