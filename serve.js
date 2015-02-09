@@ -141,7 +141,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
 
 app.post('/api/nodes', function(req, res) {
   console.log(req.body);
-  req.body.node.slug = 'asdf';
+  req.body.node.slug = req.body.node.title;
   res.json(req.body);
 });
 

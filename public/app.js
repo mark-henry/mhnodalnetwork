@@ -58,16 +58,11 @@ App.NodeController = Ember.ObjectController.extend({
     newNode: function(nodeName) {
       var _this = this;
       console.log('create node', nodeName);
-      var newNode = this.store.createRecord('node', {
-        title: nodeName
-      }).save().then(
-        function(newNode) {
-          _this.get('nodes').addObject(newNode);
+      this.createNewNode(nodeName)
+        .then(function(newNode) {
           _this.transitionToRoute('node', newNode.id);
         }
       );
-      console.log(newNode);
-      return newNode;
     },
     deleteNode: function() {
       console.log('delete current node', this.get('id'), this.get('title'));
@@ -91,8 +86,25 @@ App.NodeController = Ember.ObjectController.extend({
       this.get('adjacencies').removeObject(link);
       this.model.save();
     },
-    newNodeAndAddLink: function() {
+    newNodeAndAddLink: function(nodeName) {
+      var sourceNode = this.get('model');
+      this.createNewNode(nodeName)
+        .then(function(newNode) {
+          sourceNode.get('adjacencies').addObject(newNode);
+          _this.transitionToRoute('node', newNode.get('id'));
+        }
+      );
     }
+  },
+  createNewNode: function(nodeName) {
+    var _this = this;
+    return this.store.createRecord('node', { title: nodeName }).save()
+      .then(function(newNode) {
+          _this.get('nodes').addObject(newNode);
+          _this.model.save();
+          return newNode;
+        }
+      );
   },
   nodes: Ember.computed.alias('controllers.graph.nodes')
 });
@@ -246,18 +258,21 @@ App.NetworkViewComponent = Ember.Component.extend({
   }.observes('visibleNodes', 'links'),
 
   links: function() {
-    var graphNodes = this.get('nodes');
+    var nodes = this.get('nodes');
     var visibleNodes = this.get('visibleNodes');
     var result = [];
 
-    // Incorrect if arrays have different orders! Must look up by id
-    // Also, can be optimized
-    graphNodes.forEach(function(source, sourceIndex) {
+    // TODO: optimize
+    nodes.forEach(function(source, sourceIndex) {
       var adjacencies = source.get('adjacencies');
       adjacencies.forEach(function(adjacent) {
         visibleNodes.forEach(function(target, targetIndex) {
           if (adjacent.get('id') == target.id) {
-            if (!result.some(function (link) { return link.target == sourceIndex; })) {
+            oppositeDirection = function(link) {
+              return link.target == sourceIndex &&
+                link.source == targetIndex;
+            }
+            if (!result.some(oppositeDirection)) {
               result.push({
                 source: sourceIndex,
                 target: targetIndex
@@ -276,18 +291,19 @@ App.NetworkViewComponent = Ember.Component.extend({
     var updatedNodes = this.get('visibleNodes');
     var _this = this;
 
-    // Incorrect: ignores deletes
-    this.propertyWillChange('visibleNodes');
+    updatedNodes = updatedNodes.filter(function(existingNode) {
+      return incomingNodes.isAny('id', existingNode.id);
+    });
+
     incomingNodes.forEach(function(incomingNode) {
       var selected = incomingNode.get('id') == _this.get('selectedId');
-      var matchesid = (function(node) { return node.id == incomingNode.id; })
-      var existingNode = updatedNodes.find(matchesid);
+      var existingNode = updatedNodes.findBy('id', incomingNode.get('id'));
       if (existingNode) {
         existingNode.title = incomingNode.get('title');
         existingNode.selected = selected;
         existingNode.fixed = selected;
-      }
-      else {
+      } else {
+        console.log('new node recognized:', incomingNode.get('id'), incomingNode.get('title'));
         var newNode = {
           id: incomingNode.get('id'),
           title: incomingNode.get('title') || 'Unnamed Node',
@@ -303,7 +319,6 @@ App.NetworkViewComponent = Ember.Component.extend({
     });
 
     this.set('visibleNodes', updatedNodes);
-    this.propertyDidChange('visibleNodes');
   }.observes('nodes.@each.title', 'selectedId'),
 
   onClick: function (_this) {
