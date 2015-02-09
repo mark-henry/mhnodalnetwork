@@ -119,7 +119,6 @@ App.NodeController = Ember.ObjectController.extend({
     this.get('model').save();
   },
   autoSave: function() {
-    console.log('bouncin');
     Ember.run.debounce(this, this.save, 2000);
   }.observes('title', 'desc', 'adjacencies.@each'),
   nodes: Ember.computed.alias('controllers.graph.nodes')

@@ -89,65 +89,84 @@ app.get('/api/nodes/:node_slug', function(req, res) {
 
 app.get('/api/graphs/:graph_slug', function(req, res) {
   var graph_slug = req.params.graph_slug;
-  var cache_key = 'graphs/' + graph_slug;
-  if (cache.has(cache_key)) {
-    res.json(cache.get(cache_key));
-  }
-  else {
-    var query = ['MATCH (g:Graph)-[*]-(n1:Node)--(n2:Node)',
-      'WHERE id(g) = {graphid}',
-      'RETURN n1, n2'
-      ].join('\n');
-    var params = {graphid: hashids.decode(req.params.graph_slug)};
-    db.query(query, params, function(err, result) {
-      if (err) throw err;
-      if (result.length == 0) {
-        res.status(404).send('Graph does not exist');
-      }
-      else {
-        var graph = {slug: req.params.graph_slug, nodes: []};
-        var nodesforcache = {};
-        result.forEach(function(row) {
-          var n1slug = hashids.encode(row['n1'].id);
-          var n2slug = hashids.encode(row['n2'].id);
-          graph.nodes.push(n1slug);
 
-          if (!nodesforcache[n1slug]) {
-            nodesforcache[n1slug] = {};
-            nodesforcache[n1slug].title = row['n1'].data.title;
-            nodesforcache[n1slug].desc  = row['n1'].data.desc;
-            nodesforcache[n1slug].adjacencies = [];
-          }
-          nodesforcache[n1slug].adjacencies.push(n2slug);
-        });
+  var query = ['MATCH (g:Graph)-[*]-(n1:Node)--(n2:Node)',
+    'WHERE id(g) = {graphid}',
+    'RETURN n1, n2'
+    ].join('\n');
+  var params = {graphid: hashids.decode(req.params.graph_slug)};
+  db.query(query, params, function(err, result) {
+    if (err) throw err;
+    if (result.length == 0) {
+      res.status(404).send('Graph does not exist');
+    }
+    else {
+      var graph = {slug: req.params.graph_slug, nodes: []};
+      var nodesforcache = {};
+      result.forEach(function(row) {
+        var n1slug = hashids.encode(row['n1'].id);
+        var n2slug = hashids.encode(row['n2'].id);
+        graph.nodes.push(n1slug);
 
-        Object.keys(nodesforcache).forEach(function(key) {
-          var node = nodesforcache[key];
-          var node_cache_key = 'nodes/' + node.slug;
-          cache.set(node_cache_key, {node: node});
-        });
-        var response = { graph: graph };
-        cache.set(cache_key, response);
-        res.json(response);
-      }
-    });
-  }
+        if (!nodesforcache[n1slug]) {
+          nodesforcache[n1slug] = {};
+          nodesforcache[n1slug].title = row['n1'].data.title;
+          nodesforcache[n1slug].desc  = row['n1'].data.desc;
+          nodesforcache[n1slug].adjacencies = [];
+        }
+        nodesforcache[n1slug].adjacencies.push(n2slug);
+      });
+
+      Object.keys(nodesforcache).forEach(function(key) {
+        var node = nodesforcache[key];
+        var node_cache_key = 'nodes/' + node.slug;
+        cache.set(node_cache_key, {node: node});
+      });
+      var response = { graph: graph };
+      res.json(response);
+    }
+  });
 });
 
 app.put('/api/nodes/:node_slug', function(req, res) {
-  console.log(req.body);
-  res.json({});
+  var node_slug = req.params.node_slug;
+  var cache_key = 'nodes/' + node_slug;
+  var nodeid = hashids.decode(node_slug);
+  var updatedNode = req.body.node;
+
+  db.getNodeById(nodeid, function(err, node) {
+    if (err) {
+      console.log('Error:', err);
+      res.status(404).end();
+      return;
+    }
+
+    node.data.title = updatedNode.title;
+    node.data.desc = updatedNode.desc;
+
+    node.save(function(err) {
+      if (err) {
+        console.log('Error:', err);
+        res.status(400).end();
+        return;
+      }
+      updatedNode.slug = node_slug;
+      cache.set(cache_key, { node: updatedNode });
+      res.status(200).end(); 
+    });
+  });
 });
 
 app.post('/api/nodes', function(req, res) {
   console.log(req.body);
   req.body.node.slug = req.body.node.title;
-  res.json(req.body);
+  res.status(200).json(req.body);
 });
 
 app.put('/api/graphs/:graph_slug', function(req, res) {
   console.log(req.body);
-  res.json({});
+
+  res.status(200).end();
 });
 
 // If all else fails: send them app.html
