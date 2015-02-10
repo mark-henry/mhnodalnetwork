@@ -95,7 +95,6 @@ App.NodeController = Ember.ObjectController.extend({
       this.createNewNode(nodeName)
         .then(function(newNode) {
           sourceNode.get('adjacencies').addObject(newNode);
-          _this.transitionToRoute('node', newNode.get('id'));
         }
       );
     },
@@ -154,17 +153,23 @@ App.NodeSearchComponent = Ember.TextField.extend({
         $suggestions.first().click();
       } else {
         this.sendAction('select-without-match-action', this.$().val());
+        this.clearInput();
       }
     }
   },
 
+  clearInput: function() {
+    this.$().typeahead('val', '');
+  },
+
   setSelectionValue: function() {
+    console.log('setSelectionValue');
     var selection = this.get('selection');
     if (selection) {
       this.$().typeahead('val', selection.get('title'));
     }
     this.sendAction('select-action', this.get('selection'));
-    this.$().typeahead('val', '');
+    this.clearInput();
   },
 
   _filterContent: function(query) {
