@@ -135,6 +135,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
   var updatedNode = {
     title: req.body.node.title,
     desc: req.body.node.desc,
+    adjacencies: req.body.node.adjacencies,
     slug: node_slug
   };
 
@@ -145,13 +146,13 @@ app.put('/api/nodes/:node_slug', function(req, res) {
       return;
     }
 
-    node.data.title = updatedNode.title;
-    node.data.desc = updatedNode.desc;
+    node.data.title = updatedNode.title || '';
+    node.data.desc = updatedNode.desc || '';
 
     node.save(function(err) {
       if (err) {
-        console.log('Error:', err);
-        res.status(400).end();
+        console.log('500 Error:', err);
+        res.status(500).end();
         return;
       }
       cache.set(cache_key, { node: updatedNode });

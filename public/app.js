@@ -43,6 +43,9 @@ App.GraphRoute = Ember.Route.extend({
   }
 });
 
+App.GraphController = Ember.ObjectController.extend({
+});
+
 App.NodeRoute = Ember.Route.extend({
   model: function(params) {
     return this.store.find('node', params.node_slug);
@@ -50,7 +53,7 @@ App.NodeRoute = Ember.Route.extend({
   actions: {
     showModal: function(name, model) {
       return this.render('delete-node-modal', {
-        into: 'node',
+        into: 'graph',
         outlet: 'modal',
         model: model
       });
@@ -60,14 +63,8 @@ App.NodeRoute = Ember.Route.extend({
         outlet: 'modal',
         parentView: 'graph'
       });
-    },
-    deleteNode: function(node) {
-      console.log('delete node', this.get('id'));
     }
   }
-});
-
-App.GraphController = Ember.ObjectController.extend({
 });
 
 App.NodeController = Ember.ObjectController.extend({
@@ -86,7 +83,6 @@ App.NodeController = Ember.ObjectController.extend({
       );
     },
     addLink: function(nodeToLinkTo) {
-      console.log('add link from', this.get('id'), 'to', nodeToLinkTo.get('id'), nodeToLinkTo.get('title'));
       this.get('adjacencies').addObject(nodeToLinkTo);
       this.model.save();
     },
@@ -102,6 +98,12 @@ App.NodeController = Ember.ObjectController.extend({
           _this.transitionToRoute('node', newNode.get('id'));
         }
       );
+    },
+    deleteNode: function(node) {
+      console.log('delete node', node.get('id'));
+      this.get('nodes').removeObject(node);
+      this.transitionToRoute('node', this.get('nodes').objectAt(0));
+      this.model.save();
     }
   },
   createNewNode: function(nodeName) {
@@ -115,12 +117,28 @@ App.NodeController = Ember.ObjectController.extend({
       );
   },
   save: function() {
-    this.get('model').save();
+    if (this.get('isDirty')) {
+      this.get('model').save();
+    }
   },
   autoSave: function() {
     Ember.run.debounce(this, this.save, 1500);
   }.observes('title', 'desc'),
   nodes: Ember.computed.alias('controllers.graph.nodes')
+});
+
+App.ModalDialogComponent = Ember.Component.extend({
+  actions: {
+    close: function() {
+      this.$('.modal').modal('hide');
+      this.sendAction('close');
+    }
+  },
+  show: function() {
+    this.$('.modal').modal().on('hidden.bs.modal', function() {
+      this.sendAction('close');
+    }.bind(this));
+  }.on('didInsertElement')
 });
 
 // twitter-typeahead by thefrontside (customized)
@@ -324,7 +342,7 @@ App.NetworkViewComponent = Ember.Component.extend({
           selected: selected,
           fixed: selected,
         };
-        if (selected) {
+        if (selected || true) {
           newNode.x = newNode.px = _this.get('center_x');
           newNode.y = newNode.py = _this.get('center_y');
         }
