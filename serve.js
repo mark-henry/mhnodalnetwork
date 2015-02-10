@@ -132,7 +132,11 @@ app.put('/api/nodes/:node_slug', function(req, res) {
   var node_slug = req.params.node_slug;
   var cache_key = 'nodes/' + node_slug;
   var nodeid = hashids.decode(node_slug);
-  var updatedNode = req.body.node;
+  var updatedNode = {
+    title: req.body.node.title,
+    desc: req.body.node.desc,
+    slug: node_slug
+  };
 
   db.getNodeById(nodeid, function(err, node) {
     if (err) {
@@ -150,9 +154,8 @@ app.put('/api/nodes/:node_slug', function(req, res) {
         res.status(400).end();
         return;
       }
-      updatedNode.slug = node_slug;
       cache.set(cache_key, { node: updatedNode });
-      res.status(200).end(); 
+      res.status(200).json({}); 
     });
   });
 });

@@ -46,16 +46,28 @@ App.GraphRoute = Ember.Route.extend({
 App.NodeRoute = Ember.Route.extend({
   model: function(params) {
     return this.store.find('node', params.node_slug);
+  },
+  actions: {
+    showModal: function(name, model) {
+      return this.render('delete-node-modal', {
+        into: 'node',
+        outlet: 'modal',
+        model: model
+      });
+    },
+    closeModal: function() {
+      return this.disconnectOutlet({
+        outlet: 'modal',
+        parentView: 'graph'
+      });
+    },
+    deleteNode: function(node) {
+      console.log('delete node', this.get('id'));
+    }
   }
 });
 
 App.GraphController = Ember.ObjectController.extend({
-  save: function() {
-    this.get('model').save();
-  },
-  autoSave: function() {
-    Ember.run.debounce(this, this.save, 5000);
-  }.observes('nodes.[]')
 });
 
 App.NodeController = Ember.ObjectController.extend({
@@ -72,19 +84,6 @@ App.NodeController = Ember.ObjectController.extend({
           _this.transitionToRoute('node', newNode.id);
         }
       );
-    },
-    deleteNode: function() {
-      console.log('delete current node', this.get('id'), this.get('title'));
-      return this.render('deleteNodeModal', {
-        into: graph,
-        outlet: 'modal'
-      });
-    },
-    closeModal: function() {
-      return this.disconnectOutlet({
-        outlet: 'modal',
-        parentView: 'graph'
-      });
     },
     addLink: function(nodeToLinkTo) {
       console.log('add link from', this.get('id'), 'to', nodeToLinkTo.get('id'), nodeToLinkTo.get('title'));
@@ -119,8 +118,8 @@ App.NodeController = Ember.ObjectController.extend({
     this.get('model').save();
   },
   autoSave: function() {
-    Ember.run.debounce(this, this.save, 2000);
-  }.observes('title', 'desc', 'adjacencies.@each'),
+    Ember.run.debounce(this, this.save, 1500);
+  }.observes('title', 'desc'),
   nodes: Ember.computed.alias('controllers.graph.nodes')
 });
 
