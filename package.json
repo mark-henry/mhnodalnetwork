@@ -8,10 +8,11 @@
   },
   "dependencies": {
     "body-parser": "^1.11.0",
+    "ember-bootstrap": "latest",
     "express": "~4.9.x",
     "hashids": "1.0.0",
-    "lru-cache": "latest",
-    "neo4j": "latest"
+    "lru-cache": "2.5.0",
+    "neo4j": "1.1.1"
   },
   "engines": {
     "node": "latest"
