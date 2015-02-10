@@ -4,11 +4,14 @@
   "description": "Nodal Network",
   "main": "serve.js",
   "scripts": {
-    "start": "node serve.js"	
+    "start": "node serve.js"
   },
   "dependencies": {
-    "ember": "latest",
-    "express": "~4.9.x"
+    "body-parser": "^1.11.0",
+    "express": "~4.9.x",
+    "hashids": "1.0.0",
+    "lru-cache": "latest",
+    "neo4j": "latest"
   },
   "engines": {
     "node": "latest"
