@@ -33,7 +33,11 @@ app.get('/api/graphs', function(req, res) {
   }
   else {
     db.query('MATCH (g:Graph) RETURN g', {}, function(err, result) {
-      if (err) throw err;
+      if (err) {
+        console.log('Error in GET /api/graphs:', err);
+        res.status(404).end();
+        return;
+      }
 
       var graphlist = [];
 
@@ -58,8 +62,7 @@ app.get('/api/nodes/:node_slug', function(req, res) {
   }
   else {
     var node = db.getNodeById(hashids.decode(node_slug), function(err, result) {
-      if (err) throw err;
-      if (!result) {
+      if (err || !result) {
         res.status(404).send('Node does not exist');
       }
       else {
@@ -72,7 +75,12 @@ app.get('/api/nodes/:node_slug', function(req, res) {
         var query = 'MATCH (adj:Node)--(n:Node) WHERE id(n) = {nodeid} RETURN adj';
         var params = {nodeid: result.id};
         db.query(query, params, function(err, result) {
-          if (err) throw err;
+          if (err) {
+            console.log('500 Error:', err);
+            res.status(500).end();
+            return;
+          }
+
           result.forEach(function(row) {
             adjacentslug = hashids.encode(row['adj'].id);
             node.adjacencies.push(adjacentslug);
@@ -96,33 +104,38 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
     ].join('\n');
   var params = {graphid: hashids.decode(req.params.graph_slug)};
   db.query(query, params, function(err, result) {
-    if (err) throw err;
-    if (result.length == 0) {
+    if (err || result.length == 0) {
       res.status(404).send('Graph does not exist');
     }
     else {
-      var graph = {slug: req.params.graph_slug, nodes: []};
-      var nodesforcache = {};
+      var graph = { slug: req.params.graph_slug, nodes: [] };
+      var nodes = {};
+
       result.forEach(function(row) {
         var n1slug = hashids.encode(row['n1'].id);
         var n2slug = hashids.encode(row['n2'].id);
         graph.nodes.push(n1slug);
 
-        if (!nodesforcache[n1slug]) {
-          nodesforcache[n1slug] = {};
-          nodesforcache[n1slug].title = row['n1'].data.title;
-          nodesforcache[n1slug].desc  = row['n1'].data.desc;
-          nodesforcache[n1slug].adjacencies = [];
+        if (!nodes[n1slug]) {
+          nodes[n1slug] = {};
+          nodes[n1slug].slug = n1slug;
+          nodes[n1slug].title = row['n1'].data.title;
+          nodes[n1slug].desc  = row['n1'].data.desc;
+          nodes[n1slug].adjacencies = [];
         }
-        nodesforcache[n1slug].adjacencies.push(n2slug);
+        nodes[n1slug].adjacencies.push(n2slug);
       });
 
-      Object.keys(nodesforcache).forEach(function(key) {
-        var node = nodesforcache[key];
+      var response = { graph: graph, nodes: [] };
+
+      Object.keys(nodes).forEach(function(key) {
+        var node = nodes[key];
+        response.nodes.push(node);
+
         var node_cache_key = 'nodes/' + node.slug;
         cache.set(node_cache_key, {node: node});
       });
-      var response = { graph: graph };
+
       res.json(response);
     }
   });
