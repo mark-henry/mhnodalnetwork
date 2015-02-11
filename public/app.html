@@ -37,11 +37,10 @@
   <body>
     <script type="text/x-handlebars" data-template-name="graph">
       {{outlet}}
-      {{outlet "modal"}}
     </script>
 
     <script type="text/x-handlebars" data-template-name="delete-node-modal">
-      {{#modal-dialog title="Confirm Delete" cancel="closeModal" delete="deleteNode"}}
+      {{#modal-dialog title="Confirm Delete" cancel="close" delete="deleteNode"}}
         <div class="modal-body">
           <p>Delete node {{title}}?</p>
         </div>
@@ -56,7 +55,7 @@
       {{/modal-dialog}}
     </script>
 
-    <script type="text/x-handlebars" id="components/modal-dialog">
+    <script type="text/x-handlebars" data-template-name="components/modal-dialog">
       <div class="modal fade">
         <div class="modal-dialog">
           <div class="modal-content">
@@ -88,8 +87,10 @@
         </div>
 
         <div class="control-group controls">
-            <button id="delete" name="delete" {{action "showModal" "delete-node-modal" model}}
-              class="btn btn-mini btn-danger">Delete Node</button>
+            <button id="delete" name="delete"
+                {{action "deleteNode" model}} class="btn btn-mini btn-danger">
+              Delete Node
+            </button>
         </div>
 
         <div class="control-group controls">
@@ -118,12 +119,13 @@
       </div>
     </script>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-    <script src="http://builds.emberjs.com/release/ember-template-compiler.js"></script>
-    <script src="http://builds.emberjs.com/release/ember.debug.js"></script>
-    <script src="http://builds.emberjs.com/tags/v1.0.0-beta.14.1/ember-data.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="//getbootstrap.com/dist/js/bootstrap.js"></script>
+    <script src="//builds.emberjs.com/release/ember-template-compiler.js"></script>
+    <script src="//builds.emberjs.com/release/ember.debug.js"></script>
+    <script src="//builds.emberjs.com/tags/v1.0.0-beta.14.1/ember-data.js"></script>
     <!--script src="//d3js.org/d3.v3.min.js"></script-->
-    <script src="https://twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
+    <script src="//twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js"></script>
     <script type="text/javascript" src="/public/app.js"></script>
   </body>
