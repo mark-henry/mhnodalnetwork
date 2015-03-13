@@ -68,7 +68,7 @@ app.get('/api/nodes/:node_slug', function(req, res) {
       else {
         var node = {};
         node.slug  = hashids.encode(result.id);
-        node.title = result.data.title;
+        node.name = result.data.name;
         node.desc  = result.data.desc;
         node.adjacencies = [];
 
@@ -119,7 +119,7 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
         if (!nodes[n1slug]) {
           nodes[n1slug] = {};
           nodes[n1slug].slug = n1slug;
-          nodes[n1slug].title = row['n1'].data.title;
+          nodes[n1slug].name = row['n1'].data.name;
           nodes[n1slug].desc  = row['n1'].data.desc;
           nodes[n1slug].adjacencies = [];
         }
@@ -146,7 +146,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
   var cache_key = 'nodes/' + node_slug;
   var nodeid = hashids.decode(node_slug);
   var updatedNode = {
-    title: req.body.node.title,
+    name: req.body.node.name,
     desc: req.body.node.desc,
     adjacencies: req.body.node.adjacencies,
     slug: node_slug
@@ -159,7 +159,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
       return;
     }
 
-    node.data.title = updatedNode.title || '';
+    node.data.name = updatedNode.name || '';
     node.data.desc = updatedNode.desc || '';
 
     node.save(function(err) {
@@ -176,7 +176,10 @@ app.put('/api/nodes/:node_slug', function(req, res) {
 
 app.post('/api/nodes', function(req, res) {
   console.log(req.body);
-  req.body.node.slug = req.body.node.title;
+
+  //var query = 'CREATE (n:Node {name:})'
+
+  req.body.node.slug = req.body.node.name;
   res.status(200).json(req.body);
 });
 

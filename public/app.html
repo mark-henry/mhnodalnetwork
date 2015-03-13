@@ -42,7 +42,7 @@
     <script type="text/x-handlebars" data-template-name="delete-node-modal">
       {{#modal-dialog title="Confirm Delete" cancel="close" delete="deleteNode"}}
         <div class="modal-body">
-          <p>Delete node {{title}}?</p>
+          <p>Delete node {{name}}?</p>
         </div>
         <div class="modal-footer">
           <div class="control-group">
@@ -61,7 +61,7 @@
           <div class="modal-content">
             <div class="modal-header">
               <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-              <h4 class="modal-title">{{title}}</h4>
+              <h4 class="modal-title">{{name}}</h4>
               {{yield}}
             </div>
           </div>
@@ -78,7 +78,7 @@
 
         <div class="control-group">
           <div class="controls">
-            {{input value=model.title placeholder="Name"}}
+            {{input value=model.name placeholder="Name"}}
           </div>
         </div>
 
@@ -98,7 +98,7 @@
           <div id="linklist">
             <ul>
               {{#each adjnode in adjacencies}}
-                <li>{{#link-to "node" adjnode}}{{adjnode.title}}{{/link-to}}
+                <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
                   <button {{action "deleteLink" adjnode}}>X</button></li>
               {{/each}}
               <li>{{node-search content=nodes select-action="addLink"
