@@ -106,10 +106,12 @@ App.NodeController = Ember.ObjectController.extend({
     }
   },
   createNewNode: function(nodeName) {
+    // Returns: promise for the new node
     var _this = this;
     return this.store.createRecord('node', { name: nodeName }).save()
       .then(function(newNode) {
           _this.get('nodes').addObject(newNode);
+          _this.get('controllers.graph.model').save();
           _this.model.save();
           return newNode;
         }
