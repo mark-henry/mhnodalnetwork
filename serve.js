@@ -64,6 +64,7 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
 
   getGraph(graph_slug, function(err, response) {
     if (err) {
+      console.log(err);
       res.status(404).send('Graph does not exist');
     }
     
@@ -179,7 +180,7 @@ function getAllGraphs(callback) {
 function getNode(node_slug, callback) {
   // Retrieves a node from the database, including its adjacencies
   // Returns a REST-ready node object like
-  //  { slug (encoded), name, desc, adjacencies }
+  //  { slug: encoded_slug, name, desc, adjacencies }
 
   // Return cached if present
   var cache_key = 'nodes/' + node_slug;
@@ -276,18 +277,15 @@ function getGraph(graph_slug, callback) {
         nodes[n1slug].adjacencies.push(n2slug);
       });
 
-      var response = { graph: graph, nodes: [] };
-
+      // Cache this graph's nodes
       Object.keys(nodes).forEach(function(key) {
         var node = nodes[key];
-        response.nodes.push(node);
-
         var node_cache_key = 'nodes/' + node.slug;
-        cache.set(node_cache_key, {node: node});
+        cache.set(node_cache_key, node);
       });
 
-      // TODO: cache.set()
-      callback(err, response);
+      // TODO: cache this graph
+      callback(err, { graph: graph });
     }
   });
 }
