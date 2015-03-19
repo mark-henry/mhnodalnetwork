@@ -105,22 +105,29 @@ app.post('/api/nodes', function(req, res) {
       return;
     }
 
-    res.json(node);
+    res.json({ node: node });
   });
 });
 
-// app.put('/api/graphs/:graph_slug', function(req, res) {
-//   console.log(req.body);
+app.put('/api/graphs/:graph_slug', function(req, res) {
+  console.log(req.body);
 
-//   var graph_id = hashids.decode(req.params.graph_slug);
-//   var create_query = 'MATCH (g:Graph) WHERE id(g)={gid}'
-//   // For each node in the graph, create a relationship between the graph
-//   //  and that node. This keeps orphaned nodes in the graph.
-//   req.body.nodes.forEach(function(node) {
-//     query += 'UPDATE (g)-[]-(n)'
-//   })
-//   res.status(200).end();
-// });
+  var incomingGraph = {
+    name: req.body.graph.name,
+    nodes: req.body.graph.nodes,
+    slug: req.params.graph_slug
+  };
+
+  putGraph(incomingGraph, function(err) {
+    if (err) {
+      console.log(err);
+      res.status(500).end();
+      return;
+    }
+
+    res.status(200).json({});
+  });
+});
 
 // If all else fails: send them app.html
 app.get('/*', function(req, res) {
@@ -131,10 +138,38 @@ app.get('/*', function(req, res) {
 // ////
 // Database utility functions
 
-function postNode(newNode, callback) {
-  // Creates a new node and returns it via callback. The return is necessary
-  //  because we've created a new slug for the node.
+function putGraph(graph, callback) {
+  // Updates an existing graph to the database (PUT assumes that the graph
+  //  already exists).
+  // param incomingGraph: graph like { }
+  // param callback: function(err)
+  // Returns nothing.
 
+  // Build the query.
+  // For each node in the graph, create a relationship between the graph
+  //  and that node. This keeps orphaned nodes in the graph.
+  var graph_id = hashids.decode(graph.slug)[0];
+  var node_ids = [];
+  graph.nodes.forEach(function(node_slug) {
+    node_id = hashids.decode(node_slug)[0];
+    node_ids.push(node_id);
+  });
+
+  var query = 'START g=node({graph_id}), n=node({node_ids}) ' +
+    'MERGE g-[:CONTAINS]->n';
+  var params = {
+    graph_id: graph_id,
+    node_ids: node_ids
+  };
+  db.query(query, params, function(err, result) {
+    // TODO: cache.set
+    callback(err);
+  });
+}
+
+function postNode(newNode, callback) {
+  // Creates a new node and returns it via callback. The returned node
+  //  contains the new slug value.
 
   var query = 'CREATE (n:Node {name:{name}}) RETURN n, id(n)';
   var params = { name: newNode.name };
@@ -218,7 +253,7 @@ function putNode(incomingNode, callback) {
   // Returns nothing.
 
   var cache_key = 'nodes/' + incomingNode.slug;
-  var nodeid = hashids.decode(incomingNode.slug);
+  var nodeid = hashids.decode(incomingNode.slug)[0];
 
   db.getNodeById(nodeid, function(err, node) {
     if (err) {
@@ -249,6 +284,7 @@ function getGraph(graph_slug, callback) {
   // param callback: function of (err, graph), where graph is a REST-ready
   //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
+  // TODO: Bug: orphaned nodes are not matched by this query.
   var query = ['MATCH (g:Graph)-[*]-(n1:Node)--(n2:Node)',
     'WHERE id(g) = {graphid}',
     'RETURN n1, n2'
@@ -277,6 +313,10 @@ function getGraph(graph_slug, callback) {
         nodes[n1slug].adjacencies.push(n2slug);
       });
 
+      // TODO: cache this graph
+      // TODO: sideload nodes
+      callback(err, { graph: graph });
+
       // Cache this graph's nodes
       Object.keys(nodes).forEach(function(key) {
         var node = nodes[key];
@@ -284,8 +324,6 @@ function getGraph(graph_slug, callback) {
         cache.set(node_cache_key, node);
       });
 
-      // TODO: cache this graph
-      callback(err, { graph: graph });
     }
   });
 }
