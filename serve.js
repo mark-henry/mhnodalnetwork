@@ -284,10 +284,10 @@ function getGraph(graph_slug, callback) {
   // param callback: function of (err, graph), where graph is a REST-ready
   //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
-  // TODO: Bug: orphaned nodes are not matched by this query.
-  var query = ['MATCH (g:Graph)-[*]-(n1:Node)--(n2:Node)',
+  var query = ['MATCH (g:Graph)-[*]-(n1:Node)',
     'WHERE id(g) = {graphid}',
-    'RETURN n1, n2'
+    'OPTIONAL MATCH (n1)--(n2:Node)',
+    'RETURN DISTINCT g, n1, n2'
     ].join('\n');
   var params = { graphid: hashids.decode(graph_slug) };
   db.query(query, params, function(err, result) {
@@ -300,7 +300,6 @@ function getGraph(graph_slug, callback) {
 
       result.forEach(function(row) {
         var n1slug = hashids.encode(row['n1'].id);
-        var n2slug = hashids.encode(row['n2'].id);
         graph.nodes.push(n1slug);
 
         if (!nodes[n1slug]) {
@@ -310,7 +309,11 @@ function getGraph(graph_slug, callback) {
           nodes[n1slug].desc  = row['n1'].data.desc;
           nodes[n1slug].adjacencies = [];
         }
-        nodes[n1slug].adjacencies.push(n2slug);
+
+        if (row['n2'] != null) {
+          var n2slug = hashids.encode(row['n2'].id);
+          nodes[n1slug].adjacencies.push(n2slug);
+        }
       });
 
       // TODO: cache this graph
