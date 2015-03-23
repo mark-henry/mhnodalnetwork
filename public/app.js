@@ -1,6 +1,6 @@
 (function() {
 
-App = Em.Application.create({
+App = Ember.Application.create({
   // LOG_TRANSITIONS: true
 });
 
@@ -21,13 +21,13 @@ App.ApplicationSerializer = DS.RESTSerializer.extend({
 });
 
 App.Node = DS.Model.extend({
-  title: DS.attr('string'),
+  name: DS.attr('string'),
   desc: DS.attr('string'),
   adjacencies: DS.hasMany('node', {async: true})
 });
 
 App.Graph = DS.Model.extend({
-  title: DS.attr('string'),
+  name: DS.attr('string'),
   nodes: DS.hasMany('node', {async: true})
 });
 
@@ -101,15 +101,20 @@ App.NodeController = Ember.ObjectController.extend({
     deleteNode: function(node) {
       console.log('delete node', node.get('id'));
       this.get('nodes').removeObject(node);
-      this.transitionToRoute('node', this.get('nodes').objectAt(0));
+      node.deleteRecord();
+      //node.save();
       this.model.save();
+
+      this.transitionToRoute('node', this.get('nodes').objectAt(0));
     }
   },
   createNewNode: function(nodeName) {
+    // Returns: promise for the new node
     var _this = this;
-    return this.store.createRecord('node', { title: nodeName }).save()
+    return this.store.createRecord('node', { name: nodeName }).save()
       .then(function(newNode) {
           _this.get('nodes').addObject(newNode);
+          _this.get('controllers.graph.model').save();
           _this.model.save();
           return newNode;
         }
@@ -122,7 +127,7 @@ App.NodeController = Ember.ObjectController.extend({
   },
   autoSave: function() {
     Ember.run.debounce(this, this.save, 1500);
-  }.observes('title', 'desc'),
+  }.observes('name', 'desc'),
   nodes: Ember.computed.alias('controllers.graph.nodes')
 });
 
@@ -166,7 +171,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
     console.log('setSelectionValue');
     var selection = this.get('selection');
     if (selection) {
-      this.$().typeahead('val', selection.get('title'));
+      this.$().typeahead('val', selection.get('name'));
     }
     this.sendAction('select-action', this.get('selection'));
     this.clearInput();
@@ -175,7 +180,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
   _filterContent: function(query) {
     var regex = new RegExp(query, 'i');
     return this.get('content').filter(function(node) {
-      return regex.test(node.get('title'));
+      return regex.test(node.get('name'));
     }).map(function(thing) {
       return thing;
     });
@@ -185,7 +190,7 @@ App.NodeSearchComponent = Ember.TextField.extend({
     var typeaheadParams = {
         minLength: 0,
         displayKey: function(node) {
-          return node.get('title');
+          return node.get('name');
         }.bind(this),
         source: function(query, cb) {
           var content = this.get('content');
@@ -251,7 +256,7 @@ App.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(100).charge(-300).gravity(.018));
+    this.set('force', d3.layout.force().distance(60).charge(-5e2).gravity(.09));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
@@ -272,7 +277,7 @@ App.NetworkViewComponent = Ember.Component.extend({
     force.links(links);
 
     var idkey = (function(d) { return d.id; });
-    var nodetitle = (function(d) { return d.title; });
+    var nodename = (function(d) { return d.name; });
     var nodeSelection = this.get('svg').select('.nodegroup').selectAll('.node').data(nodes, idkey);
     nodeSelection.enter()
       .append('text')
@@ -281,10 +286,10 @@ App.NetworkViewComponent = Ember.Component.extend({
           'node': true,
           'selected': (function(d) { return d.selected; })
         })
-        .text(nodetitle)
+        .text(nodename)
         .on('click', this.get('onClick')(this))
         .call(force.drag);
-    nodeSelection.text(nodetitle);
+    nodeSelection.text(nodename);
     nodeSelection.exit().remove();
 
     var linkSelection = this.get('svg').select('.linkgroup').selectAll('.link').data(links);
@@ -337,13 +342,13 @@ App.NetworkViewComponent = Ember.Component.extend({
       var selected = incomingNode.get('id') == _this.get('selectedId');
       var existingNode = updatedNodes.findBy('id', incomingNode.get('id'));
       if (existingNode) {
-        existingNode.title = incomingNode.get('title');
+        existingNode.name = incomingNode.get('name');
         existingNode.selected = selected;
         existingNode.fixed = selected;
       } else {
         var newNode = {
           id: incomingNode.get('id'),
-          title: incomingNode.get('title') || 'Unnamed Node',
+          name: incomingNode.get('name') || 'Unnamed Node',
           selected: selected,
           fixed: selected,
         };
@@ -356,7 +361,7 @@ App.NetworkViewComponent = Ember.Component.extend({
     });
 
     this.set('visibleNodes', updatedNodes);
-  }.observes('nodes.@each.title', 'selectedId'),
+  }.observes('nodes.@each.name', 'selectedId'),
 
   onClick: function (_this) {
     return (function (d) {
