@@ -45,7 +45,7 @@ app.get('/api/nodes/:node_slug', function(req, res) {
 
   getNode(node_slug, function(err, node) {
     if (err) {
-      console.log('Error:', err);
+      console.log(err);
       res.status(500).end();
       return;
     }
@@ -73,6 +73,8 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
 });
 
 app.put('/api/nodes/:node_slug', function(req, res) {
+  //console.log(req.body);
+
   var incomingNode = {
     name: req.body.node.name,
     desc: req.body.node.desc,
@@ -92,7 +94,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
 });
 
 app.post('/api/nodes', function(req, res) {
-  console.log(req.body);
+  //console.log(req.body);
 
   var newNode = {
     name: req.body.node.name
@@ -110,8 +112,6 @@ app.post('/api/nodes', function(req, res) {
 });
 
 app.put('/api/graphs/:graph_slug', function(req, res) {
-  console.log(req.body);
-
   var incomingGraph = {
     name: req.body.graph.name,
     nodes: req.body.graph.nodes,
@@ -121,12 +121,24 @@ app.put('/api/graphs/:graph_slug', function(req, res) {
   putGraph(incomingGraph, function(err) {
     if (err) {
       console.log(err);
-      res.status(500).end();
+      res.status(404).end();
       return;
     }
 
     res.status(200).json({});
   });
+});
+
+app.delete('/api/nodes/:node_slug', function(req, res) {
+  deleteNode(req.params.node_slug, function(err) {
+    if (err) {
+      console.log(err);
+      res.status(404).end();
+      return;
+    }
+
+    res.status(200).json({});
+  })
 });
 
 // If all else fails: send them app.html
@@ -138,6 +150,24 @@ app.get('/*', function(req, res) {
 // ////
 // Database utility functions
 
+function deleteNode(node_slug, callback) {
+  // Deletes the node corresponding to the given node_slug from the database.
+  // param callback: function(err)
+  // Returns nothing.
+
+  var nodeid = hashids.decode(node_slug);
+  var query = 'START n=node({nodeid}) MATCH n-[r]-() DELETE n, r';
+  var params = { nodeid: nodeid };
+  db.query(query, params, function(err) {
+    if (!err) {
+      var cache_key = 'nodes/' + node_slug;
+      cache.del(cache_key);
+    }
+
+    callback(err);
+  });
+}
+
 function putGraph(graph, callback) {
   // Updates an existing graph to the database (PUT assumes that the graph
   //  already exists).
@@ -146,8 +176,8 @@ function putGraph(graph, callback) {
   // Returns nothing.
 
   // Build the query.
-  // For each node in the graph, create a relationship between the graph
-  //  and that node. This keeps orphaned nodes in the graph.
+  // For each node in the graph, create a CONTAINS relationship between the 
+  //  graph and that node. This keeps orphaned nodes in the graph.
   var graph_id = hashids.decode(graph.slug)[0];
   var node_ids = [];
   graph.nodes.forEach(function(node_slug) {
@@ -255,23 +285,29 @@ function putNode(incomingNode, callback) {
   var cache_key = 'nodes/' + incomingNode.slug;
   var nodeid = hashids.decode(incomingNode.slug)[0];
 
-  db.getNodeById(nodeid, function(err, node) {
+  var adjacent_ids = []
+  incomingNode.adjacencies.forEach(function(adj) {
+    adjacent_ids.push(hashids.decode(adj)[0]);
+  });
+
+  var query = ['START n1=node({nodeid}),',
+    'n2=node({adjacent_ids})',
+    'MERGE (n1)-[:EDGE]->(n2)',
+    'SET n1 = {n1props}'
+  ].join('\n');
+  var params = {
+    nodeid: nodeid,
+    adjacent_ids: adjacent_ids,
+    n1props: {
+      name: incomingNode.name || '',
+      desc: incomingNode.desc || ''
+    }
+  };
+  db.query(query, params, function(err) {
     if (err) {
       callback(err);
       return;
     }
-
-    node.data.name = incomingNode.name || '';
-    node.data.desc = incomingNode.desc || '';
-
-    node.save(function(err) {
-      if (err) {
-        callback(err);
-        return;
-      }
-      cache.set(cache_key, incomingNode);
-      callback(err);
-    });
   });
 }
 
@@ -284,7 +320,7 @@ function getGraph(graph_slug, callback) {
   // param callback: function of (err, graph), where graph is a REST-ready
   //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
-  var query = ['MATCH (g:Graph)-[*]-(n1:Node)',
+  var query = ['MATCH (g:Graph)--(n1:Node)',
     'WHERE id(g) = {graphid}',
     'OPTIONAL MATCH (n1)--(n2:Node)',
     'RETURN DISTINCT g, n1, n2'

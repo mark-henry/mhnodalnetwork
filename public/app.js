@@ -101,8 +101,11 @@ App.NodeController = Ember.ObjectController.extend({
     deleteNode: function(node) {
       console.log('delete node', node.get('id'));
       this.get('nodes').removeObject(node);
-      this.transitionToRoute('node', this.get('nodes').objectAt(0));
+      node.deleteRecord();
+      //node.save();
       this.model.save();
+
+      this.transitionToRoute('node', this.get('nodes').objectAt(0));
     }
   },
   createNewNode: function(nodeName) {
@@ -253,7 +256,7 @@ App.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-1e3).gravity(.08));
+    this.set('force', d3.layout.force().distance(60).charge(-5e2).gravity(.09));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
