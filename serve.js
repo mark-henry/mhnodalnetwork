@@ -304,10 +304,8 @@ function putNode(incomingNode, callback) {
     }
   };
   db.query(query, params, function(err) {
-    if (err) {
-      callback(err);
-      return;
-    }
+    //TODO: cache.set
+    callback(err);
   });
 }
 
