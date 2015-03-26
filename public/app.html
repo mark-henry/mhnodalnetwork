@@ -36,7 +36,9 @@
   </head>
   <body>
     <script type="text/x-handlebars" data-template-name="graph">
-      {{outlet}}
+      <div id="ember-application">
+        {{outlet}}
+      </div>
     </script>
 
     <script type="text/x-handlebars" data-template-name="delete-node-modal">
@@ -125,9 +127,15 @@
     <script src="//builds.emberjs.com/release/ember-template-compiler.js"></script>
     <script src="//builds.emberjs.com/release/ember.debug.js"></script>
     <script src="//builds.emberjs.com/tags/v1.0.0-beta.14.1/ember-data.js"></script>
-    <!--script src="//d3js.org/d3.v3.min.js"></script-->
+    <script src="//d3js.org/d3.v3.min.js"></script>
     <script src="//twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js"></script>
-    <script type="text/javascript" src="/public/app.js"></script>
+    <script type="text/javascript" src="/public/js/app.js"></script>
+    <script type="text/javascript" src="/public/js/components/network-view-component.js"></script>
+    <script type="text/javascript" src="/public/js/components/node-search-component.js"></script>
+    <script type="text/javascript" src="/public/js/controllers/graph-controller.js"></script>
+    <script type="text/javascript" src="/public/js/controllers/node-controller.js"></script>
+    <script type="text/javascript" src="/public/js/models/models.js"></script>
+    <script type="text/javascript" src="/public/js/router.js"></script>
+    <script type="text/javascript" src="/public/js/typeahead.js"></script>
   </body>
 </html>
