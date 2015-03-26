@@ -255,6 +255,11 @@ function getNode(node_slug, callback) {
   }
 
   db.getNodeById(hashids.decode(node_slug), function(err, result) {
+    if (err || !result) {
+      callback(err, {});
+      return;
+    }
+
     var node = {
       slug: hashids.encode(result.id),
       name: result.data.name,
@@ -327,40 +332,39 @@ function getGraph(graph_slug, callback) {
   db.query(query, params, function(err, result) {
     if (err || result.length == 0) {
       callback(err, result);
+      return;
     }
-    else {
-      var graph = { slug: graph_slug, nodes: [] };
-      var nodes = {};
 
-      result.forEach(function(row) {
-        var n1slug = hashids.encode(row['n1'].id);
-        graph.nodes.push(n1slug);
+    var graph = { slug: graph_slug, nodes: [] };
+    var nodes = {};
 
-        if (!nodes[n1slug]) {
-          nodes[n1slug] = {};
-          nodes[n1slug].slug = n1slug;
-          nodes[n1slug].name = row['n1'].data.name;
-          nodes[n1slug].desc  = row['n1'].data.desc;
-          nodes[n1slug].adjacencies = [];
-        }
+    result.forEach(function(row) {
+      var n1slug = hashids.encode(row['n1'].id);
+      graph.nodes.push(n1slug);
 
-        if (row['n2'] != null) {
-          var n2slug = hashids.encode(row['n2'].id);
-          nodes[n1slug].adjacencies.push(n2slug);
-        }
-      });
+      if (!nodes[n1slug]) {
+        nodes[n1slug] = {};
+        nodes[n1slug].slug = n1slug;
+        nodes[n1slug].name = row['n1'].data.name;
+        nodes[n1slug].desc  = row['n1'].data.desc;
+        nodes[n1slug].adjacencies = [];
+      }
 
-      // TODO: cache this graph
-      // TODO: sideload nodes
-      callback(err, { graph: graph });
+      if (row['n2'] != null) {
+        var n2slug = hashids.encode(row['n2'].id);
+        nodes[n1slug].adjacencies.push(n2slug);
+      }
+    });
 
-      // Cache this graph's nodes
-      Object.keys(nodes).forEach(function(key) {
-        var node = nodes[key];
-        var node_cache_key = 'nodes/' + node.slug;
-        cache.set(node_cache_key, node);
-      });
+    // TODO: cache this graph
+    // TODO: sideload nodes
+    callback(err, { graph: graph });
 
-    }
+    // Cache this graph's nodes
+    Object.keys(nodes).forEach(function(key) {
+      var node = nodes[key];
+      var node_cache_key = 'nodes/' + node.slug;
+      cache.set(node_cache_key, node);
+    });
   });
 }
