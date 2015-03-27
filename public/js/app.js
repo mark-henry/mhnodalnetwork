@@ -1,4 +1,4 @@
-App = window.App = Ember.Application.create({
+NN = window.NN = Ember.Application.create({
   // LOG_TRANSITIONS: true
 });
 

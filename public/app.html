@@ -35,8 +35,8 @@
     </style>
   </head>
   <body>
-    <script type="text/x-handlebars" data-template-name="graph">
-      <div id="ember-application">
+    <script type="text/x-handlebars" data-template-name="application">
+      <div id="nodalnetwork-application">
         {{outlet}}
       </div>
     </script>
@@ -71,7 +71,7 @@
       </div>
     </script>
 
-    <script type="text/x-handlebars" data-template-name="node">
+    <script type="text/x-handlebars" data-template-name="graph">
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
 
         <div class="control-group controls" id="main-search">
@@ -111,7 +111,7 @@
 
       </div>
 
-      {{network-view nodes=nodes selectedId=id drawDistance=drawDistance select-action="selectNode"}}
+      {{network-view nodes=nodes selectedId=selectedId drawDistance=drawDistance select-action="selectNode"}}
       {{outlet "modal"}}
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:20px;">
@@ -136,6 +136,5 @@
     <script type="text/javascript" src="/public/js/controllers/node-controller.js"></script>
     <script type="text/javascript" src="/public/js/models/models.js"></script>
     <script type="text/javascript" src="/public/js/router.js"></script>
-    <script type="text/javascript" src="/public/js/typeahead.js"></script>
   </body>
 </html>

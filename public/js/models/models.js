@@ -1,8 +1,7 @@
 (function () {
-
 'use strict';
 
-App.ApplicationSerializer = DS.RESTSerializer.extend({
+NN.ApplicationSerializer = DS.RESTSerializer.extend({
   primaryKey: 'slug',
   normalizeHash: function(type, hash) {
     hash.id = hash.slug;
@@ -10,15 +9,15 @@ App.ApplicationSerializer = DS.RESTSerializer.extend({
   }
 });
 
-App.Node = DS.Model.extend({
+NN.Node = DS.Model.extend({
   name: DS.attr('string'),
   desc: DS.attr('string'),
-  adjacencies: DS.hasMany('node', {async: true})
+  adjacencies: DS.hasMany('node', { async: true })
 });
 
-App.Graph = DS.Model.extend({
+NN.Graph = DS.Model.extend({
   name: DS.attr('string'),
-  nodes: DS.hasMany('node', {async: true})
+  nodes: DS.hasMany('node', { async: true })
 });
 
 })();

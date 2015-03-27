@@ -3,7 +3,7 @@
 
 // twitter-typeahead by thefrontside (customized)
 // https://github.com/thefrontside/ember-cli-twitter-typeahead/
-App.NodeSearchComponent = Ember.TextField.extend({
+NN.NodeSearchComponent = Ember.TextField.extend({
   classNames: [ 'form-control' ],
 
   keyUp: function(event) {

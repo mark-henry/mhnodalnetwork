@@ -1,7 +1,7 @@
 (function() {
 'use strict';
 
-App.NetworkViewComponent = Ember.Component.extend({
+NN.NetworkViewComponent = Ember.Component.extend({
   tagName: 'svg',
   attributeBindings: ['width', 'height'],
   nodes: [],
