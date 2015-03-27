@@ -15,33 +15,10 @@ NN.GraphController = Ember.ObjectController.extend({
         }
       );
     },
-    addLink: function(node, nodeToLinkTo) {
-      this.get('adjacencies').addObject(nodeToLinkTo);
-      this.model.save();
-    },
-    deleteLink: function(link) {
-      this.get('adjacencies').removeObject(link);
-      this.model.save();
-    },
-    newNodeAnd
-
-    : function(nodeName) {
-      var sourceNode = this.get('model');
-      this.createNewNode(nodeName)
-        .then(function(newNode) {
-          sourceNode.get('adjacencies').addObject(newNode);
-        }
-      );
-    },
-    deleteNode: function(node) {
-      console.log('delete node', node.get('id'));
-      this.get('nodes').removeObject(node);
-      node.deleteRecord();
-      this.model.save();
-
-      this.transitionToRoute('node', this.get('nodes').objectAt(0));
-    }
   },
+  selectedId: function() {
+    return this.get('selectedNode.id');
+  }.property('selectedNode'),
   createNewNode: function(nodeName) {
     // Returns: promise for the new node
     var _this = this;

@@ -71,6 +71,39 @@
       </div>
     </script>
 
+    <script type="text/x-handlebars" data-template-name="node">
+      <div class="control-group">
+        <div class="controls">
+          {{input value=model.name placeholder="Name"}}
+        </div>
+      </div>
+
+      <div class="control-group controls">
+        {{textarea value=model.desc placeholder="Description"}}
+      </div>
+
+      <div class="control-group controls">
+        <button id="delete" name="delete"
+            {{action "deleteNode" model}} class="btn btn-mini btn-danger">
+          Delete Node
+        </button>
+      </div>
+
+      <div class="control-group controls">
+        <label class="control-label" for="linklist">Links</label>
+        <div id="linklist">
+          <ul>
+            {{#each adjnode in adjacencies}}
+              <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
+                <button {{action "deleteLink" adjnode}}>X</button></li>
+            {{/each}}
+            <li>{{node-search content=controllers.graph.nodes select-action="addLink"
+                  select-without-match-action="newNodeAndAddLink"}}</li>
+          </ul>
+        </div>
+      </div>
+    </script>
+
     <script type="text/x-handlebars" data-template-name="graph">
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
 
@@ -78,36 +111,7 @@
           {{node-search content=nodes select-action="selectNode" select-without-match-action="newNode"}}
         </div>
 
-        <div class="control-group">
-          <div class="controls">
-            {{input value=model.name placeholder="Name"}}
-          </div>
-        </div>
-
-        <div class="control-group controls">
-          {{textarea value=model.desc placeholder="Description"}}
-        </div>
-
-        <div class="control-group controls">
-            <button id="delete" name="delete"
-                {{action "deleteNode" model}} class="btn btn-mini btn-danger">
-              Delete Node
-            </button>
-        </div>
-
-        <div class="control-group controls">
-          <label class="control-label" for="linklist">Links</label>
-          <div id="linklist">
-            <ul>
-              {{#each adjnode in adjacencies}}
-                <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
-                  <button {{action "deleteLink" adjnode}}>X</button></li>
-              {{/each}}
-              <li>{{node-search content=nodes select-action="addLink"
-                    select-without-match-action="newNodeAndAddLink"}}</li>
-            </ul>
-          </div>
-        </div>
+        {{outlet}}
 
       </div>
 

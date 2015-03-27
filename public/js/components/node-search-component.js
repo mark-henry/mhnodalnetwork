@@ -24,7 +24,6 @@ NN.NodeSearchComponent = Ember.TextField.extend({
   },
 
   setSelectionValue: function() {
-    console.log('setSelectionValue');
     var selection = this.get('selection');
     if (selection) {
       this.$().typeahead('val', selection.get('name'));
