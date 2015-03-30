@@ -163,7 +163,6 @@ function deleteNode(node_slug, callback) {
       var cache_key = 'nodes/' + node_slug;
       cache.del(cache_key);
     }
-
     callback(err);
   });
 }
@@ -248,11 +247,11 @@ function getNode(node_slug, callback) {
   //  { slug: encoded_slug, name, desc, adjacencies }
 
   // Return cached if present
-  var cache_key = 'nodes/' + node_slug;
-  if (cache.has(cache_key)) {
-    callback(false, cache.get(cache_key));
-    return;
-  }
+  // var cache_key = 'nodes/' + node_slug;
+  // if (cache.has(cache_key)) {
+  //   callback(null, cache.get(cache_key));
+  //   return;
+  // }
 
   db.getNodeById(hashids.decode(node_slug), function(err, result) {
     if (err || !result) {
@@ -270,13 +269,15 @@ function getNode(node_slug, callback) {
     var query = 'MATCH (adj:Node)--(n:Node) WHERE id(n) = {nodeid} RETURN adj';
     var params = {nodeid: result.id};
     db.query(query, params, function(err, result) {
-      result.forEach(function(row) {
-        adjacentslug = hashids.encode(row['adj'].id);
-        // TODO: cache the adjacents we just fetched
-        node.adjacencies.push(adjacentslug);
-      });
+      if (result) {
+        result.forEach(function(row) {
+          adjacentslug = hashids.encode(row['adj'].id);
+          // TODO: cache the adjacents we just fetched
+          node.adjacencies.push(adjacentslug);
+        });
+      }
 
-      cache.set(cache_key, node);
+      //cache.set(cache_key, node);
       callback(err, node);
     });
   });
@@ -298,7 +299,7 @@ function putNode(incomingNode, callback) {
   var query = ['START n1=node({nodeid}),',
     'n2=node({adjacent_ids})',
     'MERGE (n1)-[:EDGE]->(n2)',
-    'SET n1 = {n1props}'
+    'SET n1={n1props}'
   ].join('\n');
   var params = {
     nodeid: nodeid,
@@ -308,6 +309,7 @@ function putNode(incomingNode, callback) {
       desc: incomingNode.desc || ''
     }
   };
+  console.log(params);
   db.query(query, params, function(err) {
     //TODO: cache.set
     callback(err);

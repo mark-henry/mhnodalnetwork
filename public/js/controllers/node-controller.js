@@ -17,8 +17,8 @@ NN.NodeController = Ember.ObjectController.extend({
       this.model.save();
     },
     newNodeAndAddLink: function(nodeName) {
-      var sourceNode = this.get('selectedNode');
-      this.createNewNode(nodeName)
+      var sourceNode = this.get('model');
+      this.get('controllers.graph').createNewNode(nodeName)
         .then(function(newNode) {
           sourceNode.get('adjacencies').addObject(newNode);
         }
@@ -29,7 +29,15 @@ NN.NodeController = Ember.ObjectController.extend({
       this.model.save();
       this.transitionToRoute('graph', this.get('controllers.graph.model'));
     }
-  }
+  },
+  save: function() {
+    if (this.get('isDirty')) {
+      this.get('model').save();
+    }
+  },
+  autoSave: function() {
+    Ember.run.debounce(this, this.save, 1500);
+  }.observes('name', 'desc')
 });
 
 })();

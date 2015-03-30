@@ -30,15 +30,7 @@ NN.GraphController = Ember.ObjectController.extend({
           return newNode;
         }
       );
-  },
-  save: function() {
-    if (this.get('isDirty')) {
-      this.get('model').save();
-    }
-  },
-  autoSave: function() {
-    Ember.run.debounce(this, this.save, 1500);
-  }.observes('name', 'desc')
+  }
 });
 
 NN.ModalDialogComponent = Ember.Component.extend({

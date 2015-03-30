@@ -12,7 +12,7 @@ NN.ApplicationSerializer = DS.RESTSerializer.extend({
 NN.Node = DS.Model.extend({
   name: DS.attr('string'),
   desc: DS.attr('string'),
-  adjacencies: DS.hasMany('node', { async: true })
+  adjacencies: DS.hasMany('node', { async: true, inverse: 'adjacencies'})
 });
 
 NN.Graph = DS.Model.extend({
