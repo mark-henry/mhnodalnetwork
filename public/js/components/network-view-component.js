@@ -92,16 +92,20 @@ NN.NetworkViewComponent = Ember.Component.extend({
     });
 
     incomingNodes.forEach(function(incomingNode) {
+      var incomingName = incomingNode.get('name');
+      if (!(incomingName && incomingName.length > 0)) {
+        incomingName = '[Unnamed Node]';
+      }
       var selected = incomingNode.get('id') == _this.get('selectedId');
       var existingNode = updatedNodes.findBy('id', incomingNode.get('id'));
       if (existingNode) {
-        existingNode.name = incomingNode.get('name');
+        existingNode.name = incomingName;
         existingNode.selected = selected;
         existingNode.fixed = selected;
       } else {
         var newNode = {
           id: incomingNode.get('id'),
-          name: incomingNode.get('name') || 'Unnamed Node',
+          name: incomingName,
           selected: selected,
           fixed: selected,
         };
@@ -118,7 +122,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
 
   onClick: function (_this) {
     return (function (d) {
-      if (d3.event.defaultPrevented) return; // ignore drag
+      if (d3.event.defaultPrevented) return;  // ignore drag
       _this.sendAction('select-action', d);
     })
   },
