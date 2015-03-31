@@ -155,8 +155,13 @@ function deleteNode(node_slug, callback) {
   // param callback: function(err)
   // Returns nothing.
 
-  var nodeid = hashids.decode(node_slug);
-  var query = 'START n=node({nodeid}) MATCH n-[r]-() DELETE n, r';
+  var nodeid = hashids.decode(node_slug)[0];
+  if (!nodeid) {
+    callback("Error: Node does not exist (bad hashid)", {});
+    return;
+  }
+
+  var query = 'MATCH n-[r]-() WHERE id(n)={nodeid} DELETE r, n';
   var params = { nodeid: nodeid };
   db.query(query, params, function(err) {
     if (!err) {
@@ -253,33 +258,39 @@ function getNode(node_slug, callback) {
   //   return;
   // }
 
-  db.getNodeById(hashids.decode(node_slug), function(err, result) {
-    if (err || !result) {
-      callback(err, {});
-      return;
-    }
+  //console.log(node_slug, hashids.decode(node_slug), hashids.decode(node_slug)[0]);
 
-    var node = {
-      slug: hashids.encode(result.id),
-      name: result.data.name,
-      desc: result.data.desc,
-      adjacencies: []
-    };
+  var nodeid = hashids.decode(node_slug)[0];
+  if (!nodeid) {
+    callback("Error: Node does not exist (bad hashid)", {});
+    return;
+  }
 
-    var query = 'MATCH (adj:Node)--(n:Node) WHERE id(n) = {nodeid} RETURN adj';
-    var params = {nodeid: result.id};
-    db.query(query, params, function(err, result) {
-      if (result) {
-        result.forEach(function(row) {
+  var params = { nodeid: nodeid };
+  var query = 'START n=node({nodeid}) OPTIONAL MATCH (n:Node)-[:EDGE]-(adj) RETURN n, adj';
+  db.query(query, params, function(err, result) {
+    var node = null;
+
+    if (result && result[0]) {
+      var gottenNode = result[0]["n"]
+      node = {
+        slug: node_slug,
+        name: gottenNode.data.name,
+        desc: gottenNode.data.desc
+      };
+
+      node.adjacencies = [];
+      result.forEach(function(row) {
+        if (row['adj']) {
           adjacentslug = hashids.encode(row['adj'].id);
           // TODO: cache the adjacents we just fetched
           node.adjacencies.push(adjacentslug);
-        });
-      }
+        }
+      });
+    }
 
-      //cache.set(cache_key, node);
-      callback(err, node);
-    });
+    // cache.set(cache_key, node);
+    callback(err, node);
   });
 }
 
@@ -296,10 +307,14 @@ function putNode(incomingNode, callback) {
     adjacent_ids.push(hashids.decode(adj)[0]);
   });
 
-  var query = ['START n1=node({nodeid}),',
-    'n2=node({adjacent_ids})',
-    'MERGE (n1)-[:EDGE]->(n2)',
-    'SET n1={n1props}'
+  var query = ['MATCH n1 WHERE id(n1) = {nodeid}',
+    'OPTIONAL MATCH adj WHERE id(adj) IN {adjacent_ids}',
+    'OPTIONAL MATCH n1-[oldedge:EDGE]-()',
+    'DELETE oldedge',
+    'SET n1={n1props}',
+    'WITH n1, adj',
+    'WHERE NOT adj IS NULL',
+    'MERGE (n1)-[:EDGE]->(adj)',
   ].join('\n');
   var params = {
     nodeid: nodeid,
