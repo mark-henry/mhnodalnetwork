@@ -35,8 +35,10 @@
     </style>
   </head>
   <body>
-    <script type="text/x-handlebars" data-template-name="graph">
-      {{outlet}}
+    <script type="text/x-handlebars" data-template-name="application">
+      <div id="nodalnetwork-application">
+        {{outlet}}
+      </div>
     </script>
 
     <script type="text/x-handlebars" data-template-name="delete-node-modal">
@@ -70,64 +72,72 @@
     </script>
 
     <script type="text/x-handlebars" data-template-name="node">
+      <div class="control-group">
+        <div class="controls">
+          {{input value=model.name placeholder="Name"}}
+        </div>
+      </div>
+
+      <div class="control-group controls">
+        {{textarea value=model.desc placeholder="Description"}}
+      </div>
+
+      <div class="control-group controls">
+        <button id="delete" name="delete" {{action "deleteNode" model}} class="btn btn-mini btn-danger">
+          Delete Node
+        </button>
+      </div>
+
+      <div class="control-group controls">
+        <label class="control-label" for="linklist">Links</label>
+        <div id="linklist">
+          <ul>
+            {{#each adjnode in adjacencies}}
+              <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
+                <button {{action "deleteLink" adjnode}}>X</button></li>
+            {{/each}}
+            <li>{{node-search content=controllers.graph.nodes select-action="addLink"
+                  select-without-match-action="newNodeAndAddLink"}}</li>
+          </ul>
+        </div>
+      </div>
+    </script>
+
+    <script type="text/x-handlebars" data-template-name="graph">
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
 
         <div class="control-group controls" id="main-search">
           {{node-search content=nodes select-action="selectNode" select-without-match-action="newNode"}}
         </div>
 
-        <div class="control-group">
-          <div class="controls">
-            {{input value=model.name placeholder="Name"}}
-          </div>
-        </div>
-
-        <div class="control-group controls">
-          {{textarea value=model.desc placeholder="Description"}}
-        </div>
-
-        <div class="control-group controls">
-            <button id="delete" name="delete"
-                {{action "deleteNode" model}} class="btn btn-mini btn-danger">
-              Delete Node
-            </button>
-        </div>
-
-        <div class="control-group controls">
-          <label class="control-label" for="linklist">Links</label>
-          <div id="linklist">
-            <ul>
-              {{#each adjnode in adjacencies}}
-                <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
-                  <button {{action "deleteLink" adjnode}}>X</button></li>
-              {{/each}}
-              <li>{{node-search content=nodes select-action="addLink"
-                    select-without-match-action="newNodeAndAddLink"}}</li>
-            </ul>
-          </div>
-        </div>
+        {{outlet}}
 
       </div>
 
-      {{network-view nodes=nodes selectedId=id drawDistance=drawDistance select-action="selectNode"}}
+      {{network-view nodes=nodes selectedId=selectedId drawDistance=drawDistance select-action="selectNode"}}
       {{outlet "modal"}}
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:20px;">
         {{#if model.isDirty}}<i>Saving...</i> | {{/if}}
-        Draw distance {{input class="drawdistinput" type="number"
-            min="1" value="3" max="9" value=drawDistance}} |
         {{nodes.length}} nodes
       </div>
     </script>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-    <script src="//getbootstrap.com/dist/js/bootstrap.js"></script>
-    <script src="//builds.emberjs.com/release/ember-template-compiler.js"></script>
-    <script src="//builds.emberjs.com/release/ember.debug.js"></script>
-    <script src="//builds.emberjs.com/tags/v1.0.0-beta.14.1/ember-data.js"></script>
-    <!--script src="//d3js.org/d3.v3.min.js"></script-->
     <script src="//twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.js"></script>
-    <script type="text/javascript" src="/public/app.js"></script>
+    <script src="//getbootstrap.com/dist/js/bootstrap.js"></script>
+
+    <script src="http://builds.emberjs.com/tags/v1.10.0/ember.debug.js"></script>
+    <script src="http://builds.emberjs.com/tags/v1.10.0/ember-template-compiler.js"></script>
+    <script src="http://builds.emberjs.com/tags/v1.0.0-beta.16/ember-data.js"></script>
+    <script src="//d3js.org/d3.v3.min.js"></script>
+
+    <script type="text/javascript" src="/public/js/app.js"></script>
+    <script type="text/javascript" src="/public/js/components/network-view-component.js"></script>
+    <script type="text/javascript" src="/public/js/components/node-search-component.js"></script>
+    <script type="text/javascript" src="/public/js/controllers/graph-controller.js"></script>
+    <script type="text/javascript" src="/public/js/controllers/node-controller.js"></script>
+    <script type="text/javascript" src="/public/js/models/models.js"></script>
+    <script type="text/javascript" src="/public/js/router.js"></script>
   </body>
 </html>

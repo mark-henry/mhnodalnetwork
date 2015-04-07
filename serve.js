@@ -1,3 +1,10 @@
+var DEBUG = false;
+function debug() {
+  if (DEBUG) {
+    console.log.apply(console, arguments);
+  }
+}
+
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
@@ -23,14 +30,14 @@ app.use('/favicon.ico', express.static(__dirname + '/public/favicon.ico'));
 app.use(bodyParser.json());
 
 app.use(function (req, res, next) {
-  console.log(req.method, req.url);
+  debug(req.method, req.url);
   next();
 });
 
 app.get('/api/graphs', function(req, res) {
   getAllGraphs(function(err, graphlist) {
     if (err) {
-      console.log('Error in GET /api/graphs:', err);
+      debug('Error in GET /api/graphs:', err);
       res.status(404).end();
       return;
     }
@@ -62,18 +69,18 @@ app.get('/api/nodes/:node_slug', function(req, res) {
 app.get('/api/graphs/:graph_slug', function(req, res) {
   var graph_slug = req.params.graph_slug;
 
-  getGraph(graph_slug, function(err, response) {
+  getGraph(graph_slug, function(err, graph) {
     if (err) {
       console.log(err);
       res.status(404).send('Graph does not exist');
     }
     
-    res.json(response);
+    res.json({ graph: graph });
   });
 });
 
 app.put('/api/nodes/:node_slug', function(req, res) {
-  //console.log(req.body);
+  debug(req.body);
 
   var incomingNode = {
     name: req.body.node.name,
@@ -94,7 +101,7 @@ app.put('/api/nodes/:node_slug', function(req, res) {
 });
 
 app.post('/api/nodes', function(req, res) {
-  //console.log(req.body);
+  debug('Persisting node', req.body);
 
   var newNode = {
     name: req.body.node.name
@@ -155,15 +162,19 @@ function deleteNode(node_slug, callback) {
   // param callback: function(err)
   // Returns nothing.
 
-  var nodeid = hashids.decode(node_slug);
-  var query = 'START n=node({nodeid}) MATCH n-[r]-() DELETE n, r';
+  var nodeid = hashids.decode(node_slug)[0];
+  if (!nodeid) {
+    callback('Error: Node does not exist (bad hashid)', {});
+    return;
+  }
+
+  var query = 'MATCH n-[r]-() WHERE id(n)={nodeid} DELETE r, n';
   var params = { nodeid: nodeid };
   db.query(query, params, function(err) {
     if (!err) {
       var cache_key = 'nodes/' + node_slug;
       cache.del(cache_key);
     }
-
     callback(err);
   });
 }
@@ -171,12 +182,12 @@ function deleteNode(node_slug, callback) {
 function putGraph(graph, callback) {
   // Updates an existing graph to the database (PUT assumes that the graph
   //  already exists).
-  // param incomingGraph: graph like { }
+  // param graph: graph like { }
   // param callback: function(err)
   // Returns nothing.
 
   // Build the query.
-  // For each node in the graph, create a CONTAINS relationship between the 
+  // For each node in the graph, ensure a CONTAINS relationship between the 
   //  graph and that node. This keeps orphaned nodes in the graph.
   var graph_id = hashids.decode(graph.slug)[0];
   var node_ids = [];
@@ -191,8 +202,12 @@ function putGraph(graph, callback) {
     graph_id: graph_id,
     node_ids: node_ids
   };
+
+  var incomingGraph = graph;
   db.query(query, params, function(err, result) {
-    // TODO: cache.set
+    if (!err) {
+      slug_cache('graph/', incomingGraph);
+    }
     callback(err);
   });
 }
@@ -211,7 +226,8 @@ function postNode(newNode, callback) {
 
     row = result[0];
     newNode.slug = hashids.encode(row['id(n)']);
-    // TODO: cache.set
+    
+    slug_cache('node/', newNode);
     callback(err, newNode);
   });
 }
@@ -221,7 +237,7 @@ function getAllGraphs(callback) {
   // Returns: list of graphs like {slug:encoded_id}, ready for REST
 
   if (cache.has('graphs')) {
-    callback(false, cache.get('graphs'));
+    callback(null, cache.get('graphs'));
     return;
   }
 
@@ -243,37 +259,46 @@ function getAllGraphs(callback) {
 
 
 function getNode(node_slug, callback) {
-  // Retrieves a node from the database, including its adjacencies
+  // Retrieves a node from the database
   // Returns a REST-ready node object like
   //  { slug: encoded_slug, name, desc, adjacencies }
 
-  // Return cached if present
   var cache_key = 'nodes/' + node_slug;
   if (cache.has(cache_key)) {
-    callback(false, cache.get(cache_key));
+    callback(null, cache.get(cache_key));
     return;
   }
 
-  db.getNodeById(hashids.decode(node_slug), function(err, result) {
-    var node = {
-      slug: hashids.encode(result.id),
-      name: result.data.name,
-      desc: result.data.desc,
-      adjacencies: []
-    };
+  var nodeid = hashids.decode(node_slug)[0];
+  if (!nodeid) {
+    callback("Error: Node does not exist (bad hashid)", {});
+    return;
+  }
 
-    var query = 'MATCH (adj:Node)--(n:Node) WHERE id(n) = {nodeid} RETURN adj';
-    var params = {nodeid: result.id};
-    db.query(query, params, function(err, result) {
+  var params = { nodeid: nodeid };
+  var query = 'START n=node({nodeid}) OPTIONAL MATCH (n:Node)-[:EDGE]-(adj) RETURN n, adj';
+  db.query(query, params, function(err, result) {
+    var node = null;
+
+    if (result && result[0]) {
+      var gottenNode = result[0]["n"]
+      node = {
+        slug: node_slug,
+        name: gottenNode.data.name,
+        desc: gottenNode.data.desc
+      };
+
+      node.adjacencies = [];
       result.forEach(function(row) {
-        adjacentslug = hashids.encode(row['adj'].id);
-        // TODO: cache the adjacents we just fetched
-        node.adjacencies.push(adjacentslug);
+        if (row['adj']) {
+          adjacentslug = hashids.encode(row['adj'].id);
+          node.adjacencies.push(adjacentslug);
+        }
       });
+    }
 
-      cache.set(cache_key, node);
-      callback(err, node);
-    });
+    // cache.set(cache_key, node);
+    callback(err, node);
   });
 }
 
@@ -290,10 +315,14 @@ function putNode(incomingNode, callback) {
     adjacent_ids.push(hashids.decode(adj)[0]);
   });
 
-  var query = ['START n1=node({nodeid}),',
-    'n2=node({adjacent_ids})',
-    'MERGE (n1)-[:EDGE]->(n2)',
-    'SET n1 = {n1props}'
+  var query = ['MATCH n1 WHERE id(n1) = {nodeid}',
+    'OPTIONAL MATCH adj WHERE id(adj) IN {adjacent_ids}',
+    'OPTIONAL MATCH n1-[oldedge:EDGE]-()',
+    'DELETE oldedge',
+    'SET n1={n1props}',
+    'WITH n1, adj',
+    'WHERE NOT adj IS NULL',
+    'MERGE (n1)-[:EDGE]->(adj)',
   ].join('\n');
   var params = {
     nodeid: nodeid,
@@ -303,11 +332,12 @@ function putNode(incomingNode, callback) {
       desc: incomingNode.desc || ''
     }
   };
+  debug('params for db call:', params);
   db.query(query, params, function(err) {
-    if (err) {
-      callback(err);
-      return;
+    if (!err) {
+      slug_cache('node/', incomingNode);
     }
+    callback(err);
   });
 }
 
@@ -320,49 +350,53 @@ function getGraph(graph_slug, callback) {
   // param callback: function of (err, graph), where graph is a REST-ready
   //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
+  if (cache.has('graph/' + graph_slug)) {
+    callback(null, cache.get('graph/' + graph_slug));
+    return;
+  }
+
   var query = ['MATCH (g:Graph)--(n1:Node)',
     'WHERE id(g) = {graphid}',
     'OPTIONAL MATCH (n1)--(n2:Node)',
-    'RETURN DISTINCT g, n1, n2'
+    'RETURN n1, n2'
     ].join('\n');
   var params = { graphid: hashids.decode(graph_slug) };
   db.query(query, params, function(err, result) {
     if (err || result.length == 0) {
       callback(err, result);
+      return;
     }
-    else {
-      var graph = { slug: graph_slug, nodes: [] };
-      var nodes = {};
 
-      result.forEach(function(row) {
-        var n1slug = hashids.encode(row['n1'].id);
-        graph.nodes.push(n1slug);
+    var graph = { slug: graph_slug, nodes: [] };
+    var sideload = {};
 
-        if (!nodes[n1slug]) {
-          nodes[n1slug] = {};
-          nodes[n1slug].slug = n1slug;
-          nodes[n1slug].name = row['n1'].data.name;
-          nodes[n1slug].desc  = row['n1'].data.desc;
-          nodes[n1slug].adjacencies = [];
-        }
+    result.forEach(function(row) {
+      var n1slug = hashids.encode(row['n1'].id);
+      graph.nodes.push(n1slug);
 
-        if (row['n2'] != null) {
-          var n2slug = hashids.encode(row['n2'].id);
-          nodes[n1slug].adjacencies.push(n2slug);
-        }
-      });
+      if (!sideload[n1slug]) {
+        sideload[n1slug] = {};
+        sideload[n1slug].slug = n1slug;
+        sideload[n1slug].name = row['n1'].data.name;
+        sideload[n1slug].desc  = row['n1'].data.desc;
+        sideload[n1slug].adjacencies = [];
+      }
 
-      // TODO: cache this graph
-      // TODO: sideload nodes
-      callback(err, { graph: graph });
+      if (row['n2'] != null) {
+        var n2slug = hashids.encode(row['n2'].id);
+        sideload[n1slug].adjacencies.push(n2slug);
+      }
+    });
 
-      // Cache this graph's nodes
-      Object.keys(nodes).forEach(function(key) {
-        var node = nodes[key];
-        var node_cache_key = 'nodes/' + node.slug;
-        cache.set(node_cache_key, node);
-      });
+    Object.keys(sideload).forEach(function(key) { slug_cache('node/', sideload[key]); });
 
-    }
+    slug_cache('graph/', graph);
+    callback(err, graph);
   });
+}
+
+function slug_cache(route, object) {
+  debug('caching object', route + object.slug);
+  var object_cache_key = route + object.slug;
+  cache.set(object_cache_key, object);
 }
