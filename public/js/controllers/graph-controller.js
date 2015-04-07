@@ -8,7 +8,6 @@ NN.GraphController = Ember.ObjectController.extend({
     },
     newNode: function(nodeName) {
       var _this = this;
-      console.log('create node', nodeName);
       this.createNewNode(nodeName)
         .then(function(newNode) {
           _this.transitionToRoute('node', newNode.id);

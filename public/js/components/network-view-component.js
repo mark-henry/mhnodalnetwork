@@ -19,6 +19,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
     this.get('svg').append('g').attr('class', 'linkgroup');
     this.get('svg').append('g').attr('class', 'nodegroup');
     Ember.run.once(this, 'update');
+    Ember.run.once(this, 'streamingUpdateNodes');
   },
 
   update: function() {
