@@ -18,11 +18,11 @@ NN.NetworkViewComponent = Ember.Component.extend({
     this.set('svg', d3.select(this.$()[0]));
     this.get('svg').append('g').attr('class', 'linkgroup');
     this.get('svg').append('g').attr('class', 'nodegroup');
-    Ember.run.once(this, 'update');
+    Ember.run.once(this, 'redraw');
     Ember.run.once(this, 'streamingUpdateNodes');
   },
 
-  update: function() {
+  redraw: function() {
     var force = this.get('force');
     var nodes = this.get('visibleNodes');
     var links = this.get('links');
@@ -31,7 +31,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
     force.links(links);
 
     var idkey = (function(d) { return d.id; });
-    var nodename = (function(d) { return d.name; });
+    var nodename = (function(d) { return d.name || '[Unnamed Node]'; });
     var nodeSelection = this.get('svg').select('.nodegroup').selectAll('.node').data(nodes, idkey);
     nodeSelection.enter()
       .append('text')
@@ -84,43 +84,72 @@ NN.NetworkViewComponent = Ember.Component.extend({
   }.property('nodes.@each.adjacencies', 'visibleNodes'),
 
   streamingUpdateNodes: function() {
-    var incomingNodes = this.get('nodes');
-    var updatedNodes = this.get('visibleNodes');
     var _this = this;
 
-    updatedNodes = updatedNodes.filter(function(existingNode) {
-      return incomingNodes.isAny('id', existingNode.id);
-    });
-
-    incomingNodes.forEach(function(incomingNode) {
-      var incomingName = incomingNode.get('name');
-      if (!(incomingName && incomingName.length > 0)) {
-        incomingName = '[Unnamed Node]';
-      }
-      var selected = incomingNode.get('id') == _this.get('selectedId');
-      var existingNode = updatedNodes.findBy('id', incomingNode.get('id'));
-      if (existingNode) {
-        existingNode.name = incomingName;
-        existingNode.selected = selected;
-        existingNode.fixed = selected;
-      } else {
-        var newNode = {
-          id: incomingNode.get('id'),
-          name: incomingName,
-          selected: selected,
-          fixed: selected,
-        };
-        if (selected || true) {
-          newNode.x = newNode.px = _this.get('center_x');
-          newNode.y = newNode.py = _this.get('center_y');
-        }
-        updatedNodes.push(newNode);
+    // this.nodes is an Ember-ey collection. this.visibleNodes is a collection
+    //  of normal objects, which is how d3 likes it. So we first have to jump
+    //  this impedance gap by flattening this.nodes:
+    var incomingNodes = this.nodes.map(function(node) {
+      return {
+        id: node.get('id'),
+        name: node.get('name')
       }
     });
+    // Fortunately, we're only concerned with these few fields, since the
+    //  output of this function is only seen by d3.
 
-    this.set('visibleNodes', updatedNodes);
+    // Split the incoming nodes up into three sets.
+    // The entry set is those nodes which are new since the last update.
+    // The update set is those nodes which are not new but have been edited
+    //  since the last update.
+    // The exit set is those nodes which have been deleted since the
+    //  last update.
+    var entrySet = incomingNodes.reject(function(node) {
+      return _this.visibleNodes.some(function(existingNode) {
+        return existingNode.id == node.id;
+      });
+    });
+    var updateSet = incomingNodes.filter(function(node) {
+      var existingNode = _this.visibleNodes.findBy('id', node.id);
+      return existingNode && (existingNode.name != node.name)
+    });
+    var exitSet = this.visibleNodes.reject(function(node) {
+      return incomingNodes.some(function(incomingNode) {
+        return incomingNode.id == node.id;
+      });
+    });
+
+    console.log(entrySet.length, 'entering,', updateSet.length, 'updated,',
+      exitSet.length, 'exiting');
+
+    // Process entry set
+    this.visibleNodes.pushObjects(entrySet);
+    // Process update set
+    this.set('visibleNodes', this.visibleNodes.map(function(node) {
+      if (updateSet.isAny('id', node.id)) {
+        return updateSet.findBy('id', node.id);
+      }
+      else {
+        return node;
+      }
+    }));
+    // Process exit set
+    this.set('visibleNodes', this.visibleNodes.reject(function(node) {
+      return node in exitSet;
+    }));
+
+    // Modify the node that is currently selected by the user
+    this.set('visibleNodes', this.visibleNodes.map(function(node) {
+      var isSelected = (node.id == _this.get('selectedId'));
+      node.selected = node.fixed = isSelected;
+      if (isSelected) {
+        node.x = node.px = _this.get('center_x');
+        node.y = node.py = _this.get('center_y');
+      }
+      return node;
+    }));
   }.observes('nodes.@each.name', 'selectedId'),
-
+  
   onClick: function (_this) {
     return (function (d) {
       if (d3.event.defaultPrevented) return;  // ignore drag

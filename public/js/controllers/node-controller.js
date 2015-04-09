@@ -4,7 +4,7 @@
 NN.NodeController = Ember.ObjectController.extend({
   needs: 'graph',
   onModelChange: function() {
-    // Reach up to the graph-view and set which node is selected
+    // Reach up to the graphcontroller and set which node is selected
     this.get('controllers.graph').set('selectedNode', this.get('model'));
   }.observes('model'),
   actions: {
@@ -30,7 +30,7 @@ NN.NodeController = Ember.ObjectController.extend({
     }
   },
   onAutoSave: function() {
-    if (this.get('isDirty') && !this.get('isDeleted')) {
+    if (this.model.get('isDirty') && !this.model.get('isDeleted')) {
       this.model.save();
     }
   },

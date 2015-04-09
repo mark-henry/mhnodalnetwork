@@ -69,13 +69,13 @@ app.get('/api/nodes/:node_slug', function(req, res) {
 app.get('/api/graphs/:graph_slug', function(req, res) {
   var graph_slug = req.params.graph_slug;
 
-  getGraph(graph_slug, function(err, graph) {
+  getGraph(graph_slug, function(err, response) {
     if (err) {
       console.log(err);
-      res.status(404).send('Graph does not exist');
+      res.status(500).end();
     }
     
-    res.json({ graph: graph });
+    res.json(response);
   });
 });
 
@@ -263,8 +263,9 @@ function getNode(node_slug, callback) {
   // Returns a REST-ready node object like
   //  { slug: encoded_slug, name, desc, adjacencies }
 
-  var cache_key = 'nodes/' + node_slug;
+  var cache_key = 'node/' + node_slug;
   if (cache.has(cache_key)) {
+    debug('   Retrieved from cache');
     callback(null, cache.get(cache_key));
     return;
   }
@@ -322,7 +323,7 @@ function putNode(incomingNode, callback) {
     'SET n1={n1props}',
     'WITH n1, adj',
     'WHERE NOT adj IS NULL',
-    'MERGE (n1)-[:EDGE]->(adj)',
+    'CREATE (n1)-[:EDGE]->(adj)',
   ].join('\n');
   var params = {
     nodeid: nodeid,
@@ -347,8 +348,9 @@ function getGraph(graph_slug, callback) {
   // param graph_slug: encoded slug. Once decoded, designates the id for a
   //  Graph object. Any and all nodes on any path with the Graph are
   //  considered part of the graph.
-  // param callback: function of (err, graph), where graph is a REST-ready
-  //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
+  // param callback: function of (err, response), where response is a
+  //  REST-ready object like:
+  //   { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
   if (cache.has('graph/' + graph_slug)) {
     callback(null, cache.get('graph/' + graph_slug));
@@ -388,10 +390,15 @@ function getGraph(graph_slug, callback) {
       }
     });
 
-    Object.keys(sideload).forEach(function(key) { slug_cache('node/', sideload[key]); });
+    var nodes = [];
+    Object.keys(sideload).forEach(function(key) {
+      slug_cache('node/', sideload[key]);
+      nodes.push(sideload[key]);
+    });
 
-    slug_cache('graph/', graph);
-    callback(err, graph);
+    var response = { graph: graph, nodes: nodes };
+    slug_cache('graph/', response);
+    callback(err, response);
   });
 }
 
