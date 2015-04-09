@@ -15,11 +15,14 @@ NN.NetworkViewComponent = Ember.Component.extend({
   },
 
   didInsertElement: function() {
+    var _this = this;
     this.set('svg', d3.select(this.$()[0]));
     this.get('svg')
       .call(d3.behavior.zoom()
         .scaleExtent([1,1])
-        .on('zoom', this.get('onPan')(this)));
+        .on('zoomstart', function() { _this.svg.classed('panning', true) })
+        .on('zoomend', function() { _this.svg.classed('panning', false) })
+        .on('zoom', this.get('onPan')(this)))
     var vis = this.get('svg').append('g');
     vis.append('g').attr('class', 'linkgroup');
     vis.append('g').attr('class', 'nodegroup');
@@ -46,7 +49,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
           'selected': (function(d) { return d.selected; })
         })
         .text(nodename)
-        .on('mousedown', this.get('onDragStart')(this))
+        .on('mousedown', this.get('onNodeDragStart')(this))
         .on('click', this.get('onNodeClick')(this))
         .call(force.drag);
     nodeSelection.text(nodename);
@@ -167,7 +170,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
     });
   },
 
-  onDragStart: function(_this) {
+  onNodeDragStart: function(_this) {
     return (function(d) {
       d3.event.stopPropagation();
     });
