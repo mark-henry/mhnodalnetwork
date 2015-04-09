@@ -28,7 +28,10 @@ NN.GraphController = Ember.ObjectController.extend({
           return newNode;
         }
       );
-  }
+  },
+  hasDirty: function() {
+    return this.get('nodes').isAny('isDirty', true);
+  }.property('nodes.@each.isDirty')
 });
 
 NN.ModalDialogComponent = Ember.Component.extend({
