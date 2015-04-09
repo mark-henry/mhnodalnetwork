@@ -118,7 +118,7 @@
       {{outlet "modal"}}
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:20px;">
-        {{#if model.isDirty}}<i>Saving...</i> | {{/if}}
+        {{#if hasDirty}}<i>Saving...</i> | {{/if}}
         {{nodes.length}} nodes
       </div>
     </script>
@@ -130,7 +130,7 @@
     <script src="http://builds.emberjs.com/tags/v1.10.0/ember.debug.js"></script>
     <script src="http://builds.emberjs.com/tags/v1.10.0/ember-template-compiler.js"></script>
     <script src="http://builds.emberjs.com/tags/v1.0.0-beta.16/ember-data.js"></script>
-    <script src="//d3js.org/d3.v3.min.js"></script>
+    <script src="//d3js.org/d3.v3.js"></script>
 
     <script type="text/javascript" src="/public/js/app.js"></script>
     <script type="text/javascript" src="/public/js/components/network-view-component.js"></script>

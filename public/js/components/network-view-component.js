@@ -9,15 +9,20 @@ NN.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-4e2).gravity(.07));
+    this.set('force', d3.layout.force().distance(60).charge(-3e2).gravity(.07));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
 
   didInsertElement: function() {
     this.set('svg', d3.select(this.$()[0]));
-    this.get('svg').append('g').attr('class', 'linkgroup');
-    this.get('svg').append('g').attr('class', 'nodegroup');
+    this.get('svg')
+      .call(d3.behavior.zoom()
+        .scaleExtent([1,1])
+        .on('zoom', this.get('onPan')(this)));
+    var vis = this.get('svg').append('g');
+    vis.append('g').attr('class', 'linkgroup');
+    vis.append('g').attr('class', 'nodegroup');
     Ember.run.once(this, 'redraw');
     Ember.run.once(this, 'streamingUpdateNodes');
   },
@@ -41,7 +46,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
           'selected': (function(d) { return d.selected; })
         })
         .text(nodename)
-        .on('click', this.get('onClick')(this))
+        .on('mousedown', this.get('onDragStart')(this))
+        .on('click', this.get('onNodeClick')(this))
         .call(force.drag);
     nodeSelection.text(nodename);
     nodeSelection.exit().remove();
@@ -125,8 +131,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
       return node.id in incomingNodesDict;
     });
 
-    console.log(entrySet.length, 'entering,', updateSet.length, 'updated,',
-      exitSet.length, 'exiting');
+    // console.log(entrySet.length, 'entering,', updateSet.length, 'updated,',
+    //   exitSet.length, 'exiting');
 
     // Process entry set
     this.visibleNodes.pushObjects(entrySet);
@@ -144,7 +150,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
       return node in exitSet;
     }));
 
-    // Modify the node that is currently selected by the user
+    // Update to reflect the user's selection
     this.set('visibleNodes', this.visibleNodes.map(function(node) {
       var isSelected = (node.id == _this.get('selectedId'));
       node.selected = node.fixed = isSelected;
@@ -156,11 +162,26 @@ NN.NetworkViewComponent = Ember.Component.extend({
     }));
   }.observes('nodes.@each.name', 'selectedId'),
   
-  onClick: function (_this) {
-    return (function (d) {
-      if (d3.event.defaultPrevented) return;  // ignore drag
+  onNodeClick: function(_this) {
+    return (function(d) {
+      if (d3.event.defaultPrevented) {
+        return; // ignore drag
+      }
       _this.sendAction('select-action', d);
-    })
+    });
+  },
+
+  onDragStart: function(_this) {
+    return (function(d) {
+      d3.event.stopPropagation();
+    });
+  },
+
+  onPan: function(_this) {
+    return (function() {
+      _this.get('svg').select('g')
+        .attr('transform', 'translate(' + d3.event.translate + ')');
+    });
   },
 
   onTick: function () {
