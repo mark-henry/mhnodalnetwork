@@ -98,6 +98,16 @@ NN.NetworkViewComponent = Ember.Component.extend({
     // Fortunately, we're only concerned with these few fields, since the
     //  output of this function is only seen by d3.
 
+    // Construct some dictionaries to help with performance
+    var incomingNodesDict = {};
+    incomingNodes.forEach(function(node) {
+      incomingNodesDict[node.id] = node;
+    });
+    var visibleNodesDict = {};
+    this.visibleNodes.forEach(function(node) {
+      visibleNodesDict[node.id] = node;
+    });
+
     // Split the incoming nodes up into three sets.
     // The entry set is those nodes which are new since the last update.
     // The update set is those nodes which are not new but have been edited
@@ -105,18 +115,14 @@ NN.NetworkViewComponent = Ember.Component.extend({
     // The exit set is those nodes which have been deleted since the
     //  last update.
     var entrySet = incomingNodes.reject(function(node) {
-      return _this.visibleNodes.some(function(existingNode) {
-        return existingNode.id == node.id;
-      });
+      return node.id in visibleNodesDict;
     });
     var updateSet = incomingNodes.filter(function(node) {
-      var existingNode = _this.visibleNodes.findBy('id', node.id);
+      var existingNode = visibleNodesDict[node.id];
       return existingNode && (existingNode.name != node.name)
     });
     var exitSet = this.visibleNodes.reject(function(node) {
-      return incomingNodes.some(function(incomingNode) {
-        return incomingNode.id == node.id;
-      });
+      return node.id in incomingNodesDict;
     });
 
     console.log(entrySet.length, 'entering,', updateSet.length, 'updated,',

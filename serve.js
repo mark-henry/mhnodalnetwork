@@ -352,8 +352,9 @@ function getGraph(graph_slug, callback) {
   //  REST-ready object like:
   //   { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
 
-  if (cache.has('graph/' + graph_slug)) {
-    callback(null, cache.get('graph/' + graph_slug));
+  var cache_key = 'graph/' + graph_slug;
+  if (cache.has(cache_key)) {
+    callback(null, cache.get(cache_key));
     return;
   }
 
@@ -397,7 +398,7 @@ function getGraph(graph_slug, callback) {
     });
 
     var response = { graph: graph, nodes: nodes };
-    slug_cache('graph/', response);
+    cache.set(cache_key, response);
     callback(err, response);
   });
 }
