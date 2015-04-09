@@ -9,7 +9,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-3e2).gravity(.07));
+    this.set('force', d3.layout.force().distance(60).charge(-3e2).gravity(.05));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
@@ -154,10 +154,6 @@ NN.NetworkViewComponent = Ember.Component.extend({
     this.set('visibleNodes', this.visibleNodes.map(function(node) {
       var isSelected = (node.id == _this.get('selectedId'));
       node.selected = node.fixed = isSelected;
-      if (isSelected) {
-        node.x = node.px = _this.get('center_x');
-        node.y = node.py = _this.get('center_y');
-      }
       return node;
     }));
   }.observes('nodes.@each.name', 'selectedId'),
@@ -179,8 +175,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
 
   onPan: function(_this) {
     return (function() {
-      _this.get('svg').select('g')
-        .attr('transform', 'translate(' + d3.event.translate + ')');
+      var vis = _this.get('svg').select('g')
+      vis.attr('transform', 'translate(' + d3.event.translate + ')');
     });
   },
 
