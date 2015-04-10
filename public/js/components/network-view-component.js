@@ -138,7 +138,12 @@ NN.NetworkViewComponent = Ember.Component.extend({
     //   exitSet.length, 'exiting');
 
     // Process entry set
-    this.visibleNodes.pushObjects(entrySet);
+    this.visibleNodes.pushObjects(entrySet.map(function(node) {
+      // New nodes are centered in the view
+      node.x = _this.get('center_x') - _this.zoomListener.translate()[0];
+      node.y = _this.get('center_y') - _this.zoomListener.translate()[1];
+      return node;
+    }));
     // Process update set
     this.set('visibleNodes', this.visibleNodes.map(function(node) {
       if (updateSet.isAny('id', node.id)) {
@@ -174,10 +179,9 @@ NN.NetworkViewComponent = Ember.Component.extend({
     var selectedNode = this.visibleNodes.findBy('id', this.selectedId)
 
     // Move zoom camera to center on selected node
-    var nodeTrans = [selectedNode.x, selectedNode.y];
     var moveCameraTo = [
-      this.get('center_x') - nodeTrans[0],
-      this.get('center_y') - nodeTrans[1]
+      this.get('center_x') - selectedNode.x,
+      this.get('center_y') - selectedNode.y
     ];
     this.zoomListener.translate(moveCameraTo);
     this.zoomListener.event(this.svg.transition().duration(200));
