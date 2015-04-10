@@ -9,7 +9,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-3e2).gravity(.05));
+    this.set('force', d3.layout.force().distance(60).charge(-300).gravity(.05));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
@@ -66,30 +66,41 @@ NN.NetworkViewComponent = Ember.Component.extend({
   links: function() {
     var nodes = this.get('nodes');
     var visibleNodes = this.get('visibleNodes');
-    var result = [];
+    var links = [];
 
-    // TODO: optimize
-    nodes.forEach(function(source, sourceIndex) {
-      var adjacencies = source.get('adjacencies');
-      adjacencies.forEach(function(adjacent) {
-        visibleNodes.forEach(function(target, targetIndex) {
-          if (adjacent.get('id') == target.id) {
-            var oppositeDirection = function(link) {
-              return link.target == sourceIndex &&
-                link.source == targetIndex;
-            }
-            if (!result.some(oppositeDirection)) {
-              result.push({
-                source: sourceIndex,
-                target: targetIndex
-              });
+    // This function examines this.nodes and updates this.links based on
+    //  the adjacencies therein. The this.links collection is a list of
+    //  index pairs. The indices point to nodes in this.visibleNodes.
+
+    // Construct some dictionaries for efficiency:
+    var nodesDict = {};
+    this.get('nodes').forEach(function(node, index) {
+      nodesDict[node.get('id')] = index;
+    });
+    var visibleNodesDict = {};
+    this.get('visibleNodes').forEach(function(node, index) {
+      visibleNodesDict[node.id] = index;
+    });
+
+    // Iterate over all nodes in this.visibleNodes. For each node,
+    //  find itself and its adjacencies in this.visibleNodes and push a
+    //  corresponding link into links.
+    this.get('nodes').forEach(function(node) {  
+      if (node.get('id') in visibleNodesDict) {
+        var sourceIndex = visibleNodesDict[node.get('id')];
+        node.get('adjacencies').forEach(function(adjacent) {
+          if (adjacent.get('id') in visibleNodesDict) {
+            var targetIndex = visibleNodesDict[adjacent.get('id')];
+            // The below check eliminates duplicates:
+            if (sourceIndex > targetIndex) {  
+              links.push({ source: sourceIndex, target: targetIndex });
             }
           }
         });
-      });
+      }
     });
 
-    return result;
+    return links;
   }.property('nodes.@each.adjacencies', 'visibleNodes'),
 
   streamingUpdateNodes: function() {
@@ -105,7 +116,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
       }
     });
     // Fortunately, we're only concerned with these few fields, since the
-    //  output of this function is only seen by d3.
+    //  output of this function, the visibleNodes collection,
+    //  is only seen by d3.
 
     // Construct some dictionaries to help with performance
     var incomingNodesDict = {};
@@ -184,7 +196,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
       this.get('center_y') - selectedNode.y
     ];
     this.zoomListener.translate(moveCameraTo);
-    this.zoomListener.event(this.svg.transition().duration(200));
+    this.zoomListener.event(this.svg.transition().duration(300));
   }.observes('selectedId'),
 
   onNodeDragStart: function(_this) {
