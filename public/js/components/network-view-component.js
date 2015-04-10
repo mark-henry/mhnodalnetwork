@@ -166,8 +166,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
       }
     }));
     // Process exit set
-    this.set('visibleNodes', this.visibleNodes.reject(function(node) {
-      return node in exitSet;
+    this.set('visibleNodes', this.get('visibleNodes').reject(function(node) {
+      return exitSet.isAny('id', node.id);
     }));
 
     // Update to reflect the user's selection
