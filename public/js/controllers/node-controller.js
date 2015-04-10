@@ -4,7 +4,7 @@
 NN.NodeController = Ember.ObjectController.extend({
   needs: 'graph',
   onModelChange: function() {
-    // Reach up to the graph-view and set which node is selected
+    // Reach up to the graphcontroller and set which node is selected
     this.get('controllers.graph').set('selectedNode', this.get('model'));
   }.observes('model'),
   actions: {
@@ -24,13 +24,23 @@ NN.NodeController = Ember.ObjectController.extend({
         }
       );
     },
+    selectNewNodeAndAddLink: function(nodeName) {
+      var _this = this;
+      var sourceNode = this.get('model');
+      this.get('controllers.graph').createNewNode(nodeName)
+        .then(function(newNode) {
+          sourceNode.get('adjacencies').addObject(newNode);
+          _this.transitionToRoute('node', newNode.get('id'));
+        }
+      );
+    },
     deleteNode: function(node) {
       this.transitionToRoute('graph', this.get('controllers.graph.model'));
       node.destroyRecord();
     }
   },
   onAutoSave: function() {
-    if (this.get('isDirty') && !this.get('isDeleted')) {
+    if (this.model.get('isDirty') && !this.model.get('isDeleted')) {
       this.model.save();
     }
   },

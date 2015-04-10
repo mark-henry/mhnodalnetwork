@@ -72,10 +72,19 @@ app.get('/api/graphs/:graph_slug', function(req, res) {
   getGraph(graph_slug, function(err, graph) {
     if (err) {
       console.log(err);
-      res.status(404).send('Graph does not exist');
+      res.status(500).end();
+      return;
     }
+
+    var nodes = [];
+    graph.nodes.forEach(function(node_slug) {
+      var cachedNode = cache.get('node/' + node_slug);
+      if (cachedNode) {
+        nodes.push(cachedNode);
+      }
+    });
     
-    res.json({ graph: graph });
+    res.json({ graph: graph, nodes: nodes });
   });
 });
 
@@ -128,7 +137,7 @@ app.put('/api/graphs/:graph_slug', function(req, res) {
   putGraph(incomingGraph, function(err) {
     if (err) {
       console.log(err);
-      res.status(404).end();
+      res.status(500).end();
       return;
     }
 
@@ -168,12 +177,17 @@ function deleteNode(node_slug, callback) {
     return;
   }
 
-  var query = 'MATCH n-[r]-() WHERE id(n)={nodeid} DELETE r, n';
+  var query = 'MATCH (n:Node)-[r]-(oth)' +
+    'WHERE id(n)={nodeid} delete n, r return oth';
   var params = { nodeid: nodeid };
-  db.query(query, params, function(err) {
+  db.query(query, params, function(err, result) {
     if (!err) {
-      var cache_key = 'nodes/' + node_slug;
-      cache.del(cache_key);
+      cache.del(node_slug);
+
+      // For each object this node used to be connected to, refresh its cache entry
+      result.forEach(function(row) {
+        cache.del(hashids.encode(row['oth'].id));
+      });
     }
     callback(err);
   });
@@ -185,6 +199,8 @@ function putGraph(graph, callback) {
   // param graph: graph like { }
   // param callback: function(err)
   // Returns nothing.
+
+  cache.del(graph.slug);
 
   // Build the query.
   // For each node in the graph, ensure a CONTAINS relationship between the 
@@ -206,7 +222,7 @@ function putGraph(graph, callback) {
   var incomingGraph = graph;
   db.query(query, params, function(err, result) {
     if (!err) {
-      slug_cache('graph/', incomingGraph);
+      slug_cache(incomingGraph);
     }
     callback(err);
   });
@@ -227,7 +243,7 @@ function postNode(newNode, callback) {
     row = result[0];
     newNode.slug = hashids.encode(row['id(n)']);
     
-    slug_cache('node/', newNode);
+    slug_cache(newNode);
     callback(err, newNode);
   });
 }
@@ -263,9 +279,9 @@ function getNode(node_slug, callback) {
   // Returns a REST-ready node object like
   //  { slug: encoded_slug, name, desc, adjacencies }
 
-  var cache_key = 'nodes/' + node_slug;
-  if (cache.has(cache_key)) {
-    callback(null, cache.get(cache_key));
+  if (cache.has(node_slug)) {
+    debug('   Retrieved from cache');
+    callback(null, cache.get(node_slug));
     return;
   }
 
@@ -297,7 +313,7 @@ function getNode(node_slug, callback) {
       });
     }
 
-    // cache.set(cache_key, node);
+    cache.set(node_slug, node);
     callback(err, node);
   });
 }
@@ -307,7 +323,6 @@ function putNode(incomingNode, callback) {
   // param incomingNode: one node like { slug, name, desc, adjacencies }
   // Returns nothing.
 
-  var cache_key = 'nodes/' + incomingNode.slug;
   var nodeid = hashids.decode(incomingNode.slug)[0];
 
   var adjacent_ids = []
@@ -335,30 +350,34 @@ function putNode(incomingNode, callback) {
   debug('params for db call:', params);
   db.query(query, params, function(err) {
     if (!err) {
-      slug_cache('node/', incomingNode);
+      slug_cache(incomingNode);
     }
     callback(err);
   });
 }
 
 function getGraph(graph_slug, callback) {
-  // Fetches and returns (via callback) a graph corresponding to the provided
-  //  slug.
+  // Fetches and returns (via callback) a graph corresponding to
+  //  the provided slug.
+  // Has the side effect of fetching and caching all nodes
+  //  in the requested graph.
   // param graph_slug: encoded slug. Once decoded, designates the id for a
   //  Graph object. Any and all nodes on any path with the Graph are
   //  considered part of the graph.
-  // param callback: function of (err, graph), where graph is a REST-ready
-  //  object, like { graph: { slug, nodes[] }, nodes: [sideloaded nodes] }
+  // param callback: function of (err, response), where response is a
+  //  graph object like: { slug:slug, nodes:[nodes] }
 
-  if (cache.has('graph/' + graph_slug)) {
-    callback(null, cache.get('graph/' + graph_slug));
+  var cache_key = 'graph/' + graph_slug;
+  if (cache.has(graph_slug)) {
+    callback(null, cache.get(graph_slug));
+    debug(' Retrieved from cache');
     return;
   }
 
   var query = ['MATCH (g:Graph)--(n1:Node)',
     'WHERE id(g) = {graphid}',
     'OPTIONAL MATCH (n1)--(n2:Node)',
-    'RETURN n1, n2'
+    'RETURN DISTINCT n1, n2'
     ].join('\n');
   var params = { graphid: hashids.decode(graph_slug) };
   db.query(query, params, function(err, result) {
@@ -367,19 +386,20 @@ function getGraph(graph_slug, callback) {
       return;
     }
 
-    var graph = { slug: graph_slug, nodes: [] };
+    nodeSlugs = {};
     var sideload = {};
 
     result.forEach(function(row) {
       var n1slug = hashids.encode(row['n1'].id);
-      graph.nodes.push(n1slug);
+      nodeSlugs[n1slug] = n1slug;
 
       if (!sideload[n1slug]) {
-        sideload[n1slug] = {};
-        sideload[n1slug].slug = n1slug;
-        sideload[n1slug].name = row['n1'].data.name;
-        sideload[n1slug].desc  = row['n1'].data.desc;
-        sideload[n1slug].adjacencies = [];
+        sideload[n1slug] = {
+          slug: n1slug,
+          name: row['n1'].data.name,
+          desc: row['n1'].data.desc,
+          adjacencies: []
+        };
       }
 
       if (row['n2'] != null) {
@@ -388,15 +408,18 @@ function getGraph(graph_slug, callback) {
       }
     });
 
-    Object.keys(sideload).forEach(function(key) { slug_cache('node/', sideload[key]); });
+    Object.keys(sideload).forEach(function(key) {
+      slug_cache(sideload[key]);
+    });
 
-    slug_cache('graph/', graph);
+    var graph = { slug: graph_slug, nodes: Object.keys(nodeSlugs) };
+
+    slug_cache(graph);
     callback(err, graph);
   });
 }
 
-function slug_cache(route, object) {
-  debug('caching object', route + object.slug);
-  var object_cache_key = route + object.slug;
-  cache.set(object_cache_key, object);
+function slug_cache(object) {
+  cache.set(object.slug, object);
+  debug('cached object', object.slug);
 }

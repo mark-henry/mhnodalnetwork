@@ -9,20 +9,28 @@ NN.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-4e2).gravity(.07));
+    this.set('force', d3.layout.force().distance(60).charge(-300).gravity(.05));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
 
   didInsertElement: function() {
+    var _this = this;
     this.set('svg', d3.select(this.$()[0]));
-    this.get('svg').append('g').attr('class', 'linkgroup');
-    this.get('svg').append('g').attr('class', 'nodegroup');
-    Ember.run.once(this, 'update');
+    this.zoomListener = d3.behavior.zoom().scaleExtent([1, 1])
+        .on('zoomstart', function() { _this.svg.classed('panning', true) })
+        .on('zoomend', function() { _this.svg.classed('panning', false) })
+        .on('zoom', this.get('onPan')(this));
+    this.get('svg')
+      .call(this.zoomListener);
+    var vis = this.get('svg').append('g');
+    vis.append('g').attr('class', 'linkgroup');
+    vis.append('g').attr('class', 'nodegroup');
+    Ember.run.once(this, 'redraw');
     Ember.run.once(this, 'streamingUpdateNodes');
   },
 
-  update: function() {
+  redraw: function() {
     var force = this.get('force');
     var nodes = this.get('visibleNodes');
     var links = this.get('links');
@@ -31,7 +39,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
     force.links(links);
 
     var idkey = (function(d) { return d.id; });
-    var nodename = (function(d) { return d.name; });
+    var nodename = (function(d) { return d.name || '[Unnamed Node]'; });
     var nodeSelection = this.get('svg').select('.nodegroup').selectAll('.node').data(nodes, idkey);
     nodeSelection.enter()
       .append('text')
@@ -41,7 +49,8 @@ NN.NetworkViewComponent = Ember.Component.extend({
           'selected': (function(d) { return d.selected; })
         })
         .text(nodename)
-        .on('click', this.get('onClick')(this))
+        .on('mousedown', this.get('onNodeDragStart')(this))
+        .on('click', this.get('onNodeClick')(this))
         .call(force.drag);
     nodeSelection.text(nodename);
     nodeSelection.exit().remove();
@@ -57,75 +66,150 @@ NN.NetworkViewComponent = Ember.Component.extend({
   links: function() {
     var nodes = this.get('nodes');
     var visibleNodes = this.get('visibleNodes');
-    var result = [];
+    var links = [];
 
-    // TODO: optimize
-    nodes.forEach(function(source, sourceIndex) {
-      var adjacencies = source.get('adjacencies');
-      adjacencies.forEach(function(adjacent) {
-        visibleNodes.forEach(function(target, targetIndex) {
-          if (adjacent.get('id') == target.id) {
-            var oppositeDirection = function(link) {
-              return link.target == sourceIndex &&
-                link.source == targetIndex;
-            }
-            if (!result.some(oppositeDirection)) {
-              result.push({
-                source: sourceIndex,
-                target: targetIndex
-              });
+    // This function examines this.nodes and updates this.links based on
+    //  the adjacencies therein. The this.links collection is a list of
+    //  index pairs. The indices point to nodes in this.visibleNodes.
+
+    // Construct some dictionaries for efficiency:
+    var nodesDict = {};
+    this.get('nodes').forEach(function(node, index) {
+      nodesDict[node.get('id')] = index;
+    });
+    var visibleNodesDict = {};
+    this.get('visibleNodes').forEach(function(node, index) {
+      visibleNodesDict[node.id] = index;
+    });
+
+    // Iterate over all nodes in this.visibleNodes. For each node,
+    //  find itself and its adjacencies in this.visibleNodes and push a
+    //  corresponding link into links.
+    this.get('nodes').forEach(function(node) {  
+      if (node.get('id') in visibleNodesDict) {
+        var sourceIndex = visibleNodesDict[node.get('id')];
+        node.get('adjacencies').forEach(function(adjacent) {
+          if (adjacent.get('id') in visibleNodesDict) {
+            var targetIndex = visibleNodesDict[adjacent.get('id')];
+            // The below check eliminates duplicates:
+            if (sourceIndex > targetIndex) {  
+              links.push({ source: sourceIndex, target: targetIndex });
             }
           }
         });
-      });
+      }
     });
 
-    return result;
+    return links;
   }.property('nodes.@each.adjacencies', 'visibleNodes'),
 
   streamingUpdateNodes: function() {
-    var incomingNodes = this.get('nodes');
-    var updatedNodes = this.get('visibleNodes');
     var _this = this;
 
-    updatedNodes = updatedNodes.filter(function(existingNode) {
-      return incomingNodes.isAny('id', existingNode.id);
-    });
-
-    incomingNodes.forEach(function(incomingNode) {
-      var incomingName = incomingNode.get('name');
-      if (!(incomingName && incomingName.length > 0)) {
-        incomingName = '[Unnamed Node]';
-      }
-      var selected = incomingNode.get('id') == _this.get('selectedId');
-      var existingNode = updatedNodes.findBy('id', incomingNode.get('id'));
-      if (existingNode) {
-        existingNode.name = incomingName;
-        existingNode.selected = selected;
-        existingNode.fixed = selected;
-      } else {
-        var newNode = {
-          id: incomingNode.get('id'),
-          name: incomingName,
-          selected: selected,
-          fixed: selected,
-        };
-        if (selected || true) {
-          newNode.x = newNode.px = _this.get('center_x');
-          newNode.y = newNode.py = _this.get('center_y');
-        }
-        updatedNodes.push(newNode);
+    // this.nodes is an Ember-ey collection. this.visibleNodes is a collection
+    //  of normal objects, which is how d3 likes it. So we first have to jump
+    //  this impedance gap by flattening this.nodes:
+    var incomingNodes = this.nodes.map(function(node) {
+      return {
+        id: node.get('id'),
+        name: node.get('name')
       }
     });
+    // Fortunately, we're only concerned with these few fields, since the
+    //  output of this function, the visibleNodes collection,
+    //  is only seen by d3.
 
-    this.set('visibleNodes', updatedNodes);
+    // Construct some dictionaries to help with performance
+    var incomingNodesDict = {};
+    incomingNodes.forEach(function(node) {
+      incomingNodesDict[node.id] = node;
+    });
+    var visibleNodesDict = {};
+    this.visibleNodes.forEach(function(node) {
+      visibleNodesDict[node.id] = node;
+    });
+
+    // Split the incoming nodes up into three sets.
+    // The entry set is those nodes which are new since the last update.
+    // The update set is those nodes which are not new but have been edited
+    //  since the last update.
+    // The exit set is those nodes which have been deleted since the
+    //  last update.
+    var entrySet = incomingNodes.reject(function(node) {
+      return node.id in visibleNodesDict;
+    });
+    var updateSet = incomingNodes.filter(function(node) {
+      var existingNode = visibleNodesDict[node.id];
+      return existingNode && (existingNode.name != node.name)
+    });
+    var exitSet = this.visibleNodes.reject(function(node) {
+      return node.id in incomingNodesDict;
+    });
+
+    // console.log(entrySet.length, 'entering,', updateSet.length, 'updated,',
+    //   exitSet.length, 'exiting');
+
+    // Process entry set
+    this.visibleNodes.pushObjects(entrySet.map(function(node) {
+      // New nodes are centered in the view
+      node.x = _this.get('center_x') - _this.zoomListener.translate()[0];
+      node.y = _this.get('center_y') - _this.zoomListener.translate()[1];
+      return node;
+    }));
+    // Process update set
+    this.set('visibleNodes', this.visibleNodes.map(function(node) {
+      if (updateSet.isAny('id', node.id)) {
+        return updateSet.findBy('id', node.id);
+      }
+      else {
+        return node;
+      }
+    }));
+    // Process exit set
+    this.set('visibleNodes', this.get('visibleNodes').reject(function(node) {
+      return exitSet.isAny('id', node.id);
+    }));
+
+    // Update to reflect the user's selection
+    this.set('visibleNodes', this.visibleNodes.map(function(node) {
+      var isSelected = (node.id == _this.get('selectedId'));
+      node.selected = node.fixed = isSelected;
+      return node;
+    }));
   }.observes('nodes.@each.name', 'selectedId'),
-
-  onClick: function (_this) {
-    return (function (d) {
-      if (d3.event.defaultPrevented) return;  // ignore drag
+  
+  onNodeClick: function(_this) {
+    return (function(d) {
+      if (d3.event.defaultPrevented) {
+        return; // ignore drag
+      }
       _this.sendAction('select-action', d);
-    })
+    });
+  },
+
+  onNodeSelect: function() {
+    var selectedNode = this.visibleNodes.findBy('id', this.selectedId)
+
+    // Move zoom camera to center on selected node
+    var moveCameraTo = [
+      this.get('center_x') - selectedNode.x,
+      this.get('center_y') - selectedNode.y
+    ];
+    this.zoomListener.translate(moveCameraTo);
+    this.zoomListener.event(this.svg.transition().duration(300));
+  }.observes('selectedId'),
+
+  onNodeDragStart: function(_this) {
+    return (function(d) {
+      d3.event.stopPropagation();
+    });
+  },
+
+  onPan: function(_this) {
+    return (function() {
+      var vis = _this.get('svg').select('g')
+      vis.attr('transform', 'translate(' + d3.event.translate + ')');
+    });
   },
 
   onTick: function () {

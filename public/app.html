@@ -32,6 +32,9 @@
         top: 50%;
         transform: translateY(11%);
       }
+      .panning {
+        cursor: move !important;
+      }
     </style>
   </head>
   <body>
@@ -96,8 +99,11 @@
               <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
                 <button {{action "deleteLink" adjnode}}>X</button></li>
             {{/each}}
-            <li>{{node-search content=controllers.graph.nodes select-action="addLink"
-                  select-without-match-action="newNodeAndAddLink"}}</li>
+            <li>{{node-search
+                  content=controllers.graph.nodes
+                  select-action="addLink"
+                  select-without-match-action="newNodeAndAddLink"
+                  shift-select-without-match-action="selectNewNodeAndAddLink"}}</li>
           </ul>
         </div>
       </div>
@@ -107,7 +113,10 @@
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
 
         <div class="control-group controls" id="main-search">
-          {{node-search content=nodes select-action="selectNode" select-without-match-action="newNode"}}
+          {{node-search
+            content=nodes select-action="selectNode"
+            select-without-match-action="newNode"
+            shift-select-without-match-action="newNode"}}
         </div>
 
         {{outlet}}
@@ -118,7 +127,7 @@
       {{outlet "modal"}}
 
       <div id="statusbar" style="position:absolute;bottom:5px;right:20px;">
-        {{#if model.isDirty}}<i>Saving...</i> | {{/if}}
+        {{#if hasDirty}}<i>Saving...</i> | {{/if}}
         {{nodes.length}} nodes
       </div>
     </script>
@@ -127,9 +136,9 @@
     <script src="//twitter.github.io/typeahead.js/releases/latest/typeahead.bundle.js"></script>
     <script src="//getbootstrap.com/dist/js/bootstrap.js"></script>
 
-    <script src="http://builds.emberjs.com/tags/v1.10.0/ember.debug.js"></script>
+    <script src="http://builds.emberjs.com/tags/v1.10.0/ember.min.js"></script>
     <script src="http://builds.emberjs.com/tags/v1.10.0/ember-template-compiler.js"></script>
-    <script src="http://builds.emberjs.com/tags/v1.0.0-beta.16/ember-data.js"></script>
+    <script src="http://builds.emberjs.com/tags/v1.0.0-beta.16/ember-data.min.js"></script>
     <script src="//d3js.org/d3.v3.min.js"></script>
 
     <script type="text/javascript" src="/public/js/app.js"></script>
