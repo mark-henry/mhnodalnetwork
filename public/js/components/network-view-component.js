@@ -17,12 +17,12 @@ NN.NetworkViewComponent = Ember.Component.extend({
   didInsertElement: function() {
     var _this = this;
     this.set('svg', d3.select(this.$()[0]));
-    this.get('svg')
-      .call(d3.behavior.zoom()
-        .scaleExtent([1,1])
+    this.zoomListener = d3.behavior.zoom().scaleExtent([1, 1])
         .on('zoomstart', function() { _this.svg.classed('panning', true) })
         .on('zoomend', function() { _this.svg.classed('panning', false) })
-        .on('zoom', this.get('onPan')(this)))
+        .on('zoom', this.get('onPan')(this));
+    this.get('svg')
+      .call(this.zoomListener);
     var vis = this.get('svg').append('g');
     vis.append('g').attr('class', 'linkgroup');
     vis.append('g').attr('class', 'nodegroup');
@@ -169,6 +169,19 @@ NN.NetworkViewComponent = Ember.Component.extend({
       _this.sendAction('select-action', d);
     });
   },
+
+  onNodeSelect: function() {
+    var selectedNode = this.visibleNodes.findBy('id', this.selectedId)
+
+    // Move zoom camera to center on selected node
+    var nodeTrans = [selectedNode.x, selectedNode.y];
+    var moveCameraTo = [
+      this.get('center_x') - nodeTrans[0],
+      this.get('center_y') - nodeTrans[1]
+    ];
+    this.zoomListener.translate(moveCameraTo);
+    this.zoomListener.event(this.svg.transition().duration(200));
+  }.observes('selectedId'),
 
   onNodeDragStart: function(_this) {
     return (function(d) {
