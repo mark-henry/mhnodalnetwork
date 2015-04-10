@@ -35,6 +35,7 @@ NN.NodeController = Ember.ObjectController.extend({
       );
     },
     deleteNode: function(node) {
+      this.transitionToRoute('graph', this.get('controllers.graph.model'));
       node.destroyRecord();
     }
   },
