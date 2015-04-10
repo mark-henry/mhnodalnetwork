@@ -24,8 +24,17 @@ NN.NodeController = Ember.ObjectController.extend({
         }
       );
     },
+    selectNewNodeAndAddLink: function(nodeName) {
+      var _this = this;
+      var sourceNode = this.get('model');
+      this.get('controllers.graph').createNewNode(nodeName)
+        .then(function(newNode) {
+          sourceNode.get('adjacencies').addObject(newNode);
+          _this.transitionToRoute('node', newNode.get('id'));
+        }
+      );
+    },
     deleteNode: function(node) {
-      this.transitionToRoute('graph', this.get('controllers.graph.model'));
       node.destroyRecord();
     }
   },

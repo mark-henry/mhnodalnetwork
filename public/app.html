@@ -99,8 +99,11 @@
               <li>{{#link-to "node" adjnode}}{{adjnode.name}}{{/link-to}}
                 <button {{action "deleteLink" adjnode}}>X</button></li>
             {{/each}}
-            <li>{{node-search content=controllers.graph.nodes select-action="addLink"
-                  select-without-match-action="newNodeAndAddLink"}}</li>
+            <li>{{node-search
+                  content=controllers.graph.nodes
+                  select-action="addLink"
+                  select-without-match-action="newNodeAndAddLink"
+                  shift-select-without-match-action="selectNewNodeAndAddLink"}}</li>
           </ul>
         </div>
       </div>
@@ -110,7 +113,10 @@
       <div id="sidebar" style="position: absolute; top: 6px; left: 6px;">
 
         <div class="control-group controls" id="main-search">
-          {{node-search content=nodes select-action="selectNode" select-without-match-action="newNode"}}
+          {{node-search
+            content=nodes select-action="selectNode"
+            select-without-match-action="newNode"
+            shift-select-without-match-action="newNode"}}
         </div>
 
         {{outlet}}

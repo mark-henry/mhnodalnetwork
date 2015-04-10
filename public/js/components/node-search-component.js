@@ -13,7 +13,12 @@ NN.NodeSearchComponent = Ember.TextField.extend({
       if ($suggestions.length) {
         $suggestions.first().click();
       } else {
-        this.sendAction('select-without-match-action', this.$().val());
+        if (event.shiftKey || event.ctrlKey) {
+          this.sendAction('shift-select-without-match-action', this.$().val());
+        }
+        else {
+          this.sendAction('select-without-match-action', this.$().val());
+        }
         this.clearInput();
       }
     }
