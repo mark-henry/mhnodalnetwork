@@ -9,27 +9,30 @@ NN.NodeController = Ember.ObjectController.extend({
   }.observes('model'),
   actions: {
     addLink: function(nodeToLinkTo) {
-      this.get('adjacencies').pushObject(nodeToLinkTo);
+      this.model.get('adjacencies').addObject(nodeToLinkTo);
       this.model.save();
     },
     deleteLink: function(link) {
-      this.get('adjacencies').removeObject(link);
+      this.model.get('adjacencies').removeObject(link);
       this.model.save();
     },
     newNodeAndAddLink: function(nodeName) {
-      var sourceNode = this.get('model');
+      var thisnode = this.get('model');
       this.get('controllers.graph').createNewNode(nodeName)
         .then(function(newNode) {
-          sourceNode.get('adjacencies').addObject(newNode);
+          thisnode.get('adjacencies').addObject(newNode);
+          thisnode.save();
+          newNode.save();
         }
       );
     },
     selectNewNodeAndAddLink: function(nodeName) {
       var _this = this;
-      var sourceNode = this.get('model');
+      var thisNode = this.get('model');
       this.get('controllers.graph').createNewNode(nodeName)
         .then(function(newNode) {
-          sourceNode.get('adjacencies').addObject(newNode);
+          thisNode.get('adjacencies').addObject(newNode);
+          thisNode.save();
           _this.transitionToRoute('node', newNode.get('id'));
         }
       );
