@@ -29,9 +29,24 @@ NN.GraphController = Ember.ObjectController.extend({
         }
       );
   },
+
   hasDirty: function() {
-    return this.get('nodes').isAny('isDirty', true);
-  }.property('nodes.@each.isDirty')
+    return this.get('nodes').isAny('isDirty', true)
+      || this.get('isDirty');
+  }.property('nodes.@each.isDirty', 'isDirty'),
+  onAutoSave: function() {
+    if (this.get('hasDirty')) {
+      if (this.get('isDirty')) {
+        this.model.save();
+      }
+      this.get('nodes').filterBy('isDirty', true)
+        .forEach(function(node) { node.save(); });
+      Ember.run.later(this, this.onAutoSave, 30 * 1000);  // A long retry
+    }
+  },
+  autoSave: function() {
+    Ember.run.debounce(this, this.onAutoSave, 1500);
+  }.observes('nodes.@each.name', 'nodes.@each.desc')
 });
 
 NN.ModalDialogComponent = Ember.Component.extend({

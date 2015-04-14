@@ -41,15 +41,7 @@ NN.NodeController = Ember.ObjectController.extend({
       this.transitionToRoute('graph', this.get('controllers.graph.model'));
       node.destroyRecord();
     }
-  },
-  onAutoSave: function() {
-    if (this.model.get('isDirty') && !this.model.get('isDeleted')) {
-      this.model.save();
-    }
-  },
-  autoSave: function() {
-    Ember.run.debounce(this, this.onAutoSave, 1500);
-  }.observes('name', 'desc')
+  }
 });
 
 })();
