@@ -37,6 +37,12 @@ NN.GraphRoute = Ember.Route.extend({
 NN.NodeRoute = Ember.Route.extend({
   model: function(params) {
     return this.store.find('node', params.node_slug);
+  },
+
+  actions: {
+    error: function(reason) {
+      this.transitionTo('graph');
+    }
   }
 });
 
