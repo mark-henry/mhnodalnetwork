@@ -1,4 +1,4 @@
-var DEBUG = false;
+var DEBUG = true;
 function debug() {
   if (DEBUG) {
     console.log.apply(console, arguments);
@@ -379,7 +379,7 @@ function getGraph(graph_slug, callback) {
     'OPTIONAL MATCH (n1)--(n2:Node)',
     'RETURN DISTINCT n1, n2'
     ].join('\n');
-  var params = { graphid: hashids.decode(graph_slug) };
+  var params = { graphid: hashids.decode(graph_slug)[0] };
   db.query(query, params, function(err, result) {
     if (err || result.length == 0) {
       callback(err, result);
