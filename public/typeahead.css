@@ -19,6 +19,24 @@ span.twitter-typeahead .tt-dropdown-menu {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
   background-clip: padding-box;
 }
+
+div.tt-dataset.tt-dataset-1 {
+  background: #fff;
+  position: relative;
+  padding: 10px;
+  width: auto;
+  box-sizing: border-box;
+  border: 1px solid #333;
+  display: block;
+}
+
+div.tt-menu {
+  width: 100%;
+  /* padding: 10px; */
+  box-sizing: border-box;
+  margin: 0;
+}
+
 span.twitter-typeahead .tt-suggestion > p {
   display: block;
   padding: 3px 20px;
