@@ -9,7 +9,7 @@ NN.NetworkViewComponent = Ember.Component.extend({
   drawDistance: 3,
 
   init: function() {
-    this.set('force', d3.layout.force().distance(60).charge(-300).gravity(.05));
+    this.set('force', d3.layout.force().distance(100).charge(-400).gravity(.05));
     this.get('force').on('tick', Ember.run.bind(this, this.onTick));
     $(window).on('resize', Ember.run.bind(this, this.onResize));
   },
