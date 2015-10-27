@@ -1,0 +1,30 @@
+/* Graph CSS file */
+circle {
+  cursor: move;
+}
+.node {
+  fill: black;
+  fill-opacity: 1;
+  text-shadow:
+    1px 1px 0 white, -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white,
+    2px 2px 0 white, -2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white;
+  text-anchor: middle;
+  cursor: pointer;
+}
+.node.selected {
+  fill: blue;
+}
+.link {
+  stroke: black;
+  stroke-opacity: 0.6;
+  stroke-width: 1.0;
+}
+.drawdistinput {
+  width: 25px;
+  position: relative;
+  top: 50%;
+  transform: translateY(11%);
+}
+.panning {
+  cursor: move !important;
+}
