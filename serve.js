@@ -1,4 +1,4 @@
-var DEBUG = true;
+var DEBUG = false;
 function debug() {
   if (DEBUG) {
     console.log.apply(console, arguments);

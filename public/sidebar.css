@@ -1,0 +1,72 @@
+/* Sidebar CSS file */
+div#sidebar {
+    width: 310px;
+    height: 100%;
+    padding: 5px;
+}
+div input, div textarea, div button.btn.btn-mini {
+    width: 92%;
+    padding: 1.5% 3% !important;
+    outline:none;
+}
+div button.btn.btn-mini {
+    width:98%;
+    font-size: 11px;
+}
+div#linklist {
+    background: #dfdfdf;
+    padding: 0;
+    margin: 0;
+}
+div#linklist ul {
+    list-style: none;
+    margin: 0;
+    padding: 2.5%;
+    color: #000;
+}
+div#linklist ul li {
+    margin-bottom: 5%;
+    width: 96%;
+    text-align: justify;
+    letter-spacing: 0.5px;
+    background: #C7C7C7;
+    padding: 2%;
+    float: none;
+    display: inline-block;
+	position:relative;
+}
+div#linklist ul li:last-child {
+	margin-bottom:0;
+}
+input.ember-view[style] {
+    padding-left: 10% !important;
+    width:85%;
+}
+div#linklist ul li button {
+    position: absolute;
+    top: -4px;
+    right: -2%;
+    border-radius: 100%;
+    border: none;
+    background: #FB5A5A;
+    color: #fff;
+    font-size: 11px;
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+}
+div#linklist ul li input[type=text] {
+	margin-bottom:0;
+	width:86%;
+}
+label[for=linklist] {
+    font-size: 18px;
+    background: #DFDFDF;
+    padding: 2%;
+    margin: 0;
+    color: #000;
+    width: 50px;
+    text-align: center;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
