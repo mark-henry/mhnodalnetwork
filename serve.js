@@ -34,6 +34,13 @@ app.use(function (req, res, next) {
   next();
 });
 
+///
+// Endpoint: /graphs/:graph_slug
+//   GET / PUT / POST
+// Endpoint: /nodes/:node_slug
+//   GET / PUT / POST / DELETE
+///
+
 app.get('/api/graphs', function(req, res) {
   getAllGraphs(function(err, graphlist) {
     if (err) {
@@ -359,6 +366,7 @@ function putNode(incomingNode, callback) {
 function getGraph(graph_slug, callback) {
   // Fetches and returns (via callback) a graph corresponding to
   //  the provided slug.
+  // If the graph does not exist, yields  a new, empty graph.
   // Has the side effect of fetching and caching all nodes
   //  in the requested graph.
   // param graph_slug: encoded slug. Once decoded, designates the id for a
@@ -381,7 +389,7 @@ function getGraph(graph_slug, callback) {
     ].join('\n');
   var params = { graphid: hashids.decode(graph_slug)[0] };
   db.query(query, params, function(err, result) {
-    if (err || result.length == 0) {
+    if (err) {
       callback(err, result);
       return;
     }
