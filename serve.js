@@ -1,4 +1,4 @@
-var DEBUG = false;
+var DEBUG = true;
 function debug() {
   if (DEBUG) {
     console.log.apply(console, arguments);
@@ -184,8 +184,8 @@ function deleteNode(node_slug, callback) {
     return;
   }
 
-  var query = 'MATCH (n:Node)-[r]-(oth)' +
-    'WHERE id(n)={nodeid} delete n, r return oth';
+  var query = 'MATCH (n:Node {id:{nodeid}})-[r]-(oth)' +
+    'delete n, r return oth';
   var params = { nodeid: nodeid };
   db.query(query, params, function(err, result) {
     if (!err) {
@@ -219,8 +219,9 @@ function putGraph(graph, callback) {
     node_ids.push(node_id);
   });
 
-  var query = 'START g=node({graph_id}), n=node({node_ids}) ' +
-    'MERGE g-[:CONTAINS]->n';
+  var query = 'MATCH (g:Graph {id: {graph_id}}) ' +
+    'FOREACH (id in {node_ids} | ' +
+      'MERGE (g)-[:CONTAINS]->(n:Node {id:id}))';
   var params = {
     graph_id: graph_id,
     node_ids: node_ids
@@ -239,19 +240,29 @@ function postNode(newNode, callback) {
   // Creates a new node and returns it via callback. The returned node
   //  contains the new slug value.
 
-  var query = 'CREATE (n:Node {name:{name}}) RETURN n, id(n)';
-  var params = { name: newNode.name };
-  db.query(query, params, function(err, result) {
+  makenewid(function(err, newid) {
     if (err) {
       callback(err, {});
       return;
     }
 
-    row = result[0];
-    newNode.slug = hashids.encode(row['id(n)']);
-    
-    slug_cache(newNode);
-    callback(err, newNode);
+    console.log()
+    var query = 'CREATE (n:Node {name:{name}, id:{node_id}}) RETURN n, id(n)';
+    var params = {
+      name: newNode.name,
+      node_id: newid
+    };
+    db.query(query, params, function(err, result) {
+      if (err) {
+        callback(err, {});
+        return;
+      }
+
+      newNode.slug = hashids.encode(newid);
+      
+      slug_cache(newNode);
+      callback(err, newNode);
+    });
   });
 }
 
@@ -337,8 +348,8 @@ function putNode(incomingNode, callback) {
     adjacent_ids.push(hashids.decode(adj)[0]);
   });
 
-  var query = ['MATCH n1 WHERE id(n1) = {nodeid}',
-    'OPTIONAL MATCH adj WHERE id(adj) IN {adjacent_ids}',
+  var query = ['MATCH (n1 {id:{nodeid}})',
+    'OPTIONAL MATCH adj WHERE adj.id IN {adjacent_ids}',
     'OPTIONAL MATCH n1-[oldedge:EDGE]-()',
     'DELETE oldedge',
     'SET n1={n1props}',
@@ -351,7 +362,8 @@ function putNode(incomingNode, callback) {
     adjacent_ids: adjacent_ids,
     n1props: {
       name: incomingNode.name || '',
-      desc: incomingNode.desc || ''
+      desc: incomingNode.desc || '',
+      id: nodeid
     }
   };
   debug('params for db call:', params);
@@ -382,8 +394,7 @@ function getGraph(graph_slug, callback) {
     return;
   }
 
-  var query = ['MATCH (g:Graph)--(n1:Node)',
-    'WHERE id(g) = {graphid}',
+  var query = ['MATCH (g:Graph {id:{graphid}})--(n1:Node)',
     'OPTIONAL MATCH (n1)--(n2:Node)',
     'RETURN DISTINCT n1, n2'
     ].join('\n');
@@ -424,6 +435,24 @@ function getGraph(graph_slug, callback) {
 
     slug_cache(graph);
     callback(err, graph);
+  });
+}
+
+function makenewid(callback) {
+  // This helper function gets a new autoincremented ID from the database.
+
+  var query = ['MERGE (id:IDCounter)',
+    'ON CREATE SET id.counter = 1',
+    'ON MATCH SET id.counter = id.counter + 1',
+    'RETURN id.counter AS newid'].join('\n');
+  db.query(query, function(err, result) {
+    if (err || result.length != 1) {
+      console.log('Error making new ID:', err);
+      callback(err, result);
+      return;
+    }
+
+    callback(null, result[0]['newid']);
   });
 }
 
