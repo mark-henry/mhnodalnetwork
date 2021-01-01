@@ -1,6 +1,5 @@
 {
   "name": "mhnodalnetwork",
-  "version": "0.3.0",
   "version": "0.5.0",
   "description": "Nodal Network",
   "main": "serve.js",
@@ -9,10 +8,10 @@
   },
   "dependencies": {
     "body-parser": "^1.11.0",
-    "express": "~4.9.x",
+    "express": "^4.17.1",
     "hashids": "1.0.0",
     "lru-cache": "2.5.0",
-    "neo4j": "1.1.1"
+    "pg": "^8.5.1"
   },
   "engines": {
     "node": "latest"
@@ -24,5 +23,8 @@
   "keywords": [
     "nodal"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "ndb": "^1.1.5"
+  }
 }

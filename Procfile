@@ -1,1 +1,2 @@
-web: node serve.js
+web: nodemon serve.js
+debug: ndb serve.js

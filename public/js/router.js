@@ -13,6 +13,12 @@ NN.Router.map(function() {
   });
 });
 
+NN.IndexRoute = Ember.Route.extend({
+  setupController: function(controller) {
+    this.get('router').transitionTo('/graph/xw/');
+  }
+})
+
 NN.GraphRoute = Ember.Route.extend({
   model: function(params) {
     return this.store.find('graph', params.graph_slug);

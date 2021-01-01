@@ -21,7 +21,7 @@ NN.GraphController = Ember.ObjectController.extend({
   createNewNode: function(nodeName) {
     // Returns: promise for the new node
     var _this = this;
-    return this.store.createRecord('node', { name: nodeName }).save()
+    return this.store.createRecord('node', { graph: _this.get('model'), name: nodeName }).save()
       .then(function(newNode) {
           _this.get('nodes').addObject(newNode);
           _this.model.save();
