@@ -293,8 +293,8 @@ app.delete('/api/nodes/:node_slug', async (req, res) => {
 app.get('/*', function(req, res) {
   if (req.path === '/') {
     if (databaseReady) {
-      console.log('Root request received, redirecting to /graphs/WL');
-      res.redirect('/graphs/WL');
+      console.log('Root request received, redirecting to /graph/WL');
+      res.redirect('/graph/WL');
     } else {
       // Optional: Send a loading page or message if DB not ready yet
       res.status(503).send('Database initializing, please wait and refresh...');
