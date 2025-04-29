@@ -6,7 +6,7 @@ NN.GraphController = Ember.ObjectController.extend({
     selectNode: function(node) {
       this.transitionToRoute('node', node.id);
     },
-    newNode: function(nodeName) {
+    'newNode': function(nodeName) {
       var _this = this;
       this.createNewNode(nodeName)
         .then(function(newNode) {
@@ -21,7 +21,13 @@ NN.GraphController = Ember.ObjectController.extend({
   createNewNode: function(nodeName) {
     // Returns: promise for the new node
     var _this = this;
-    return this.store.createRecord('node', { name: nodeName }).save()
+    // Get the current graph identifier (slug) from the controller's model id
+    var currentGraphSlug = this.get('id'); // Use 'id' which is populated from 'slug' by the serializer
+    // Pass graph_slug along with name when creating the record
+    return this.store.createRecord('node', { 
+        name: nodeName,
+        graph_slug: currentGraphSlug // Add graph context
+      }).save()
       .then(function(newNode) {
           _this.get('nodes').addObject(newNode);
           _this.model.save();

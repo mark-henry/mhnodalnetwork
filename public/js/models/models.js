@@ -6,6 +6,14 @@ NN.ApplicationSerializer = DS.RESTSerializer.extend({
   normalizeHash: function(type, hash) {
     hash.id = hash.slug;
     return this._super(type, hash); 
+  },
+  serialize: function(snapshot, options) {
+    var json = this._super(snapshot, options);
+    // Ensure graph_slug is included if present on snapshot (needed for POST)
+    if (snapshot.record.get('graph_slug')) { 
+        json.graph_slug = snapshot.record.get('graph_slug');
+    }
+    return json;
   }
 });
 
