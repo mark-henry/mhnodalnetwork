@@ -1,1 +1,2 @@
-heroku config -s | grep GRAPHSTORY_URL >> .env
+#!/bin/bash
+# cp .env.example .env
