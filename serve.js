@@ -24,6 +24,8 @@ var cache = LRU({max: 500, maxAge: 1000 * 60 * 5}); // Cache up to 500 items for
 
 app.set('port', (process.env.PORT || 5000));
 
+let databaseReady = false; // Flag to track DB initialization status
+
 // Database Initialization Function
 async function initializeDatabase() {
   console.log('Attempting to initialize database...');
@@ -109,6 +111,8 @@ async function initializeDatabase() {
     await driver.verifyConnectivity();
     console.log('Driver created');
     await initializeDatabase(); // Ensure DB is ready before starting listener
+    databaseReady = true; // Set flag when initialization completes
+    console.log('Database is ready.');
     app.listen(app.get('port'), function() {
       console.log('Listening on port ' + app.get('port'));
     });
@@ -285,9 +289,20 @@ app.delete('/api/nodes/:node_slug', async (req, res) => {
   }
 });
 
-// If all else fails: send them app.html
+// If all else fails: send them app.html OR redirect root to default graph
 app.get('/*', function(req, res) {
-  res.sendFile(__dirname + '/public/app.html');
+  if (req.path === '/') {
+    if (databaseReady) {
+      console.log('Root request received, redirecting to /graphs/WL');
+      res.redirect('/graphs/WL');
+    } else {
+      // Optional: Send a loading page or message if DB not ready yet
+      res.status(503).send('Database initializing, please wait and refresh...');
+    }
+  } else {
+    // For any other path (/graphs/WL, /api/*, etc.), serve the main app file
+    res.sendFile(__dirname + '/public/app.html');
+  }
 });
 
 // ////
