@@ -31,78 +31,72 @@ async function initializeDatabase() {
   console.log('Attempting to initialize database...');
   const session = driver.session({ database: 'neo4j' });
   try {
-    const checkResult = await session.run('MATCH (g:Graph {id: 0}) RETURN g LIMIT 1');
-    if (checkResult.records.length === 0) {
-      console.log('No existing graph found. Running initialization queries within a transaction...');
+    console.log('Running initialization queries within a transaction (will wipe existing data)...');
+    
+    await session.executeWrite(async tx => {
+      console.log('  - Clearing database...');
+      await tx.run('OPTIONAL MATCH (n) DETACH DELETE n');
       
-      await session.executeWrite(async tx => {
-        console.log('  - Clearing database...');
-        await tx.run('OPTIONAL MATCH (n) DETACH DELETE n');
-        
-        console.log('  - Creating Graph node...');
-        await tx.run(`
-          CREATE (g:Graph {name: 'Ephemeral Brainstorming Session'})
-          SET g.id = 0
-        `);
+      console.log('  - Creating Graph node...');
+      await tx.run(`
+        CREATE (g:Graph {name: 'Ephemeral Brainstorming Session'})
+        SET g.id = 0
+      `);
 
-        console.log('  - Creating IDCounter...');
-        await tx.run('MERGE (idc:IDCounter) ON CREATE SET idc.counter = 100 ON MATCH SET idc.counter = 100');
+      console.log('  - Creating IDCounter...');
+      await tx.run('MERGE (idc:IDCounter) ON CREATE SET idc.counter = 100 ON MATCH SET idc.counter = 100');
 
-        console.log('  - Creating Example Nodes...');
-        await tx.run(`
-          CREATE (welcome:Node {name: 'Welcome!', desc: 'This is an ephemeral brainstorming graph. Feel free to explore, add nodes (double-click empty space), and connect ideas (drag from one node to another). Your changes persist only for this session.'})
-          SET welcome.id = 1
-        `);
-        await tx.run(`
-          CREATE (features:Node {name: 'Features', desc: 'Click nodes to edit name/description. Drag nodes to rearrange. Double-click background to create. Drag edge from node A to B to connect. Delete nodes via API (not UI yet!).'})
-          SET features.id = 2
-        `);
-        await tx.run(`
-          CREATE (ephemeral:Node {name: 'Ephemeral Data', desc: 'NOTE: This entire graph database is temporary! It gets wiped clean every time the server restarts (e.g., on Heroku dyno restart or local relaunch). Nothing you add here is saved permanently.'})
-          SET ephemeral.id = 3
-        `);
-        await tx.run(`
-          CREATE (tech:Node {name: 'Tech Stack', desc: 'Built with Node.js, Express, Neo4j (graph database), and D3.js for visualization.'})
-          SET tech.id = 4
-        `);
-        await tx.run(`
-          CREATE (you:Node {name: 'Your Ideas Here', desc: 'What concepts are you exploring? Add them! Link them! See where your thoughts lead.'})
-          SET you.id = 5
-        `);
+      console.log('  - Creating Example Nodes...');
+      await tx.run(`
+        CREATE (welcome:Node {name: 'Welcome!', desc: 'This is an ephemeral brainstorming graph. Feel free to explore, add nodes (double-click empty space), and connect ideas (drag from one node to another). Your changes persist only for this session.'})
+        SET welcome.id = 1
+      `);
+      await tx.run(`
+        CREATE (features:Node {name: 'Features', desc: 'Click nodes to edit name/description. Drag nodes to rearrange. Double-click background to create. Drag edge from node A to B to connect. Delete nodes via API (not UI yet!).'})
+        SET features.id = 2
+      `);
+      await tx.run(`
+        CREATE (ephemeral:Node {name: 'Ephemeral Data', desc: 'NOTE: This entire graph database is temporary! It gets wiped clean every time the server restarts (e.g., on Heroku dyno restart or local relaunch). Nothing you add here is saved permanently.'})
+        SET ephemeral.id = 3
+      `);
+      await tx.run(`
+        CREATE (tech:Node {name: 'Tech Stack', desc: 'Built with Node.js, Express, Neo4j (graph database), and D3.js for visualization.'})
+        SET tech.id = 4
+      `);
+      await tx.run(`
+        CREATE (you:Node {name: 'Your Ideas Here', desc: 'What concepts are you exploring? Add them! Link them! See where your thoughts lead.'})
+        SET you.id = 5
+      `);
 
-        console.log('  - Creating Edges...');
-        await tx.run(`
-          MATCH (welcome:Node {id: 1}), (features:Node {id: 2}), (ephemeral:Node {id: 3}), (tech:Node {id: 4}), (you:Node {id: 5})
-          MERGE (welcome)-[:EDGE]->(features)
-          MERGE (welcome)-[:EDGE]->(ephemeral)
-          MERGE (welcome)-[:EDGE]->(you)
-          MERGE (features)-[:EDGE]->(tech)
-          MERGE (ephemeral)-[:EDGE]->(tech)
-        `);
+      console.log('  - Creating Edges...');
+      await tx.run(`
+        MATCH (welcome:Node {id: 1}), (features:Node {id: 2}), (ephemeral:Node {id: 3}), (tech:Node {id: 4}), (you:Node {id: 5})
+        MERGE (welcome)-[:EDGE]->(features)
+        MERGE (welcome)-[:EDGE]->(ephemeral)
+        MERGE (welcome)-[:EDGE]->(you)
+        MERGE (features)-[:EDGE]->(tech)
+        MERGE (ephemeral)-[:EDGE]->(tech)
+      `);
 
-        console.log('  - Associating Nodes with Graph...');
-        const result = await tx.run(`
-          MATCH (g:Graph {id: 0}), (welcome:Node {id: 1}), (features:Node {id: 2}), (ephemeral:Node {id: 3}), (tech:Node {id: 4}), (you:Node {id: 5})
-          MERGE (g)-[:CONTAINS]->(welcome)
-          MERGE (g)-[:CONTAINS]->(features)
-          MERGE (g)-[:CONTAINS]->(ephemeral)
-          MERGE (g)-[:CONTAINS]->(tech)
-          MERGE (g)-[:CONTAINS]->(you)
-          RETURN id(g) as graphId
-        `);
-        
-        const singleRecord = result.records[0];
-        const graphId = singleRecord.get('graphId');
-        console.log(`Database transaction committed. Created graph with internal ID: ${graphId}. Hash ID: ${hashids.encode(graphId.low)}`);
-      });
+      console.log('  - Associating Nodes with Graph...');
+      const result = await tx.run(`
+        MATCH (g:Graph {id: 0}), (welcome:Node {id: 1}), (features:Node {id: 2}), (ephemeral:Node {id: 3}), (tech:Node {id: 4}), (you:Node {id: 5})
+        MERGE (g)-[:CONTAINS]->(welcome)
+        MERGE (g)-[:CONTAINS]->(features)
+        MERGE (g)-[:CONTAINS]->(ephemeral)
+        MERGE (g)-[:CONTAINS]->(tech)
+        MERGE (g)-[:CONTAINS]->(you)
+        RETURN id(g) as graphId
+      `);
+      
+      const singleRecord = result.records[0];
+      const graphId = singleRecord.get('graphId');
+      console.log(`Database transaction committed. Created graph with internal ID: ${graphId}. Hash ID: ${hashids.encode(graphId.low)}`);
+    });
 
-      // Verify IDCounter outside the main transaction for clarity
-      const counterResult = await session.run('MATCH (idc:IDCounter) RETURN idc.counter as count');
-      console.log('IDCounter set to:', counterResult.records[0].get('count').low);
-
-    } else {
-      console.log('Graph with ID 0 already exists. Skipping initialization.');
-    }
+    // Verify IDCounter outside the main transaction for clarity
+    const counterResult = await session.run('MATCH (idc:IDCounter) RETURN idc.counter as count');
+    console.log('IDCounter set to:', counterResult.records[0].get('count').low);
 
   } catch (error) {
     console.error('Database initialization failed:', error);
