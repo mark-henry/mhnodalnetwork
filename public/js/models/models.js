@@ -18,6 +18,7 @@ NN.ApplicationSerializer = DS.RESTSerializer.extend({
 });
 
 NN.Node = DS.Model.extend({
+  // Note: Due to ApplicationSerializer configuration, id and slug are the same value.
   name: DS.attr('string'),
   desc: DS.attr('string'),
   adjacencies: DS.hasMany('node', { async: true, inverse: 'adjacencies'})
