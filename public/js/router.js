@@ -15,7 +15,7 @@ NN.Router.map(function() {
 
 NN.IndexRoute = Ember.Route.extend({
   setupController: function(controller) {
-    this.get('router').transitionTo('/graph/xw/');
+    this.get('router').transitionTo('/graph/WL/');
   }
 })
 
