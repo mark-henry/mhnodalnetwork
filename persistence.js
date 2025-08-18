@@ -128,10 +128,11 @@ exports.initializeDatabase = async function initializeDatabase() {
  * @returns nothing
  */
 exports.deleteNode = async function deleteNode(node_slug) {
-  var nodeid = hashids.decode(node_slug)[0];
-  if (!nodeid) {
+  var decoded = hashids.decode(node_slug);
+  if (decoded.length === 0) {
     throw new Error('Node does not exist (bad hashid)');
   }
+  var nodeid = decoded[0];
 
   await client.query('DELETE FROM nodes WHERE id = $1', [nodeid]);
 
@@ -147,10 +148,11 @@ exports.deleteNode = async function deleteNode(node_slug) {
  * @param {name: string, slug: string} graph - graph object
  */
 exports.putGraph = async function putGraph(graph) {
-  const graphid = hashids.decode(graph.slug)[0];
-  if (!graphid) {
-    throw new Error('Node does not exist (bad hashid)');
+  const decoded = hashids.decode(graph.slug);
+  if (decoded.length === 0) {
+    throw new Error('Graph does not exist (bad hashid)');
   }
+  const graphid = decoded[0];
   await client.query(
     `INSERT INTO graphs (id, name) VALUES ($1, $2)
     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
@@ -165,10 +167,11 @@ exports.putGraph = async function putGraph(graph) {
  * @returns the new node
  */
 exports.postNode = async function postNode(node) {
-  var graph_id = hashids.decode(node.graph_slug)[0];
-  if (!graph_id) {
+  var decoded = hashids.decode(node.graph_slug);
+  if (decoded.length === 0) {
     throw new Error('Graph does not exist (bad hashid)');
   }
+  var graph_id = decoded[0];
 
   var res = await client.query(
     `INSERT INTO nodes (graph_id, name, descr)
@@ -203,10 +206,11 @@ exports.getNode = async function getNode(node_slug) {
     return cache.get(node_slug);
   }
 
-  var nodeid = hashids.decode(node_slug)[0];
-  if (!nodeid) {
+  var decoded = hashids.decode(node_slug);
+  if (decoded.length === 0) {
     throw new Error(`Node ${node_slug} does not exist (bad hashid)`);
   }
+  var nodeid = decoded[0];
 
   const node_res = await client.query(
     'SELECT name, descr from nodes WHERE id = $1;', [nodeid]);
@@ -231,15 +235,17 @@ exports.getNode = async function getNode(node_slug) {
  * @param node { slug, name, desc, adjacencies }
  */
 exports.putNode = async function putNode(node) {
-  var nodeId = hashids.decode(node.slug)[0];
-  if (!nodeId) {
+  var nodeDecoded = hashids.decode(node.slug);
+  if (nodeDecoded.length === 0) {
     throw new Error('Node does not exist (bad hashid)');
   }
+  var nodeId = nodeDecoded[0];
 
-  var graphId = hashids.decode(node.graph_slug)[0];
-  if (!graphId) {
+  var graphDecoded = hashids.decode(node.graph_slug);
+  if (graphDecoded.length === 0) {
     throw new Error('Graph does not exist (bad hashid)');
   }
+  var graphId = graphDecoded[0];
 
   try {
     await client.query('BEGIN');
@@ -247,12 +253,18 @@ exports.putNode = async function putNode(node) {
       `INSERT INTO nodes (graph_id, id, name, descr) VALUES ($1, $2, $3, $4)
       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, descr = EXCLUDED.descr`,
       [graphId, nodeId, node.name, node.desc]);
-    await client.query('INSERT INTO edges (n1, n2) VALUES ' +
-      node.adjacencies.map(adj => {
-        var adjId = hashids.decode(adj)[0];
-        return `(${Math.min(nodeId, adjId)}, ${Math.max(nodeId, adjId)})`;
-      }).join(', ') +
-      ' ON CONFLICT (n1, n2) DO NOTHING');
+    if (node.adjacencies && node.adjacencies.length > 0) {
+      await client.query('INSERT INTO edges (n1, n2) VALUES ' +
+        node.adjacencies.map(adj => {
+          var adjDecoded = hashids.decode(adj);
+          if (adjDecoded.length === 0) {
+            throw new Error(`Adjacent node ${adj} does not exist (bad hashid)`);
+          }
+          var adjId = adjDecoded[0];
+          return `(${Math.min(nodeId, adjId)}, ${Math.max(nodeId, adjId)})`;
+        }).join(', ') +
+        ' ON CONFLICT (n1, n2) DO NOTHING');
+    }
     await client.query('COMMIT');
     slug_cache(node);
   } catch (e) {
@@ -269,10 +281,11 @@ exports.putNode = async function putNode(node) {
  * @returns graph object like: { slug: slug, nodes: [{slug, name, desc, adjacencies: [slug]}] }
  */
 exports.getGraph = async function getGraph(graph_slug) {
-  var graphid = hashids.decode(graph_slug)[0];
-  if (!graphid) {
+  var decoded = hashids.decode(graph_slug);
+  if (decoded.length === 0) {
     throw new Error('Graph does not exist (bad hashid)');
   }
+  var graphid = decoded[0];
 
   const res = await client.query('SELECT name FROM graphs WHERE id = $1', [graphid]);
   if (!res.rows.length) {
