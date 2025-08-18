@@ -4,7 +4,8 @@
   "description": "Nodal Network",
   "main": "serve.js",
   "scripts": {
-    "start": "node serve.js"
+    "start": "node serve.js",
+    "dev": "nodemon serve.js"
   },
   "dependencies": {
     "body-parser": "^1.11.0",
@@ -25,6 +26,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "ndb": "^1.1.5"
+    "ndb": "^1.1.5",
+    "nodemon": "^3.1.10"
   }
 }

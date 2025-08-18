@@ -10,8 +10,23 @@ var persistence = require('./persistence');
 var app = express();
 
 app.set('port', (process.env.PORT || 5000));
-app.listen(app.get('port'), function() {
-  console.log('Listening on port ' + app.get('port'));
+
+// Initialize database on startup
+async function initializeDatabase() {
+  try {
+    console.log('Initializing database...');
+    await persistence.initializeDatabase();
+    console.log('Database initialization complete!');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+  }
+}
+
+// Start server after database initialization
+initializeDatabase().then(() => {
+  app.listen(app.get('port'), function() {
+    console.log('Listening on port ' + app.get('port'));
+  });
 });
 
 app.use('/public', express.static(__dirname + '/public'));
